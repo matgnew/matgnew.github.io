@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css"><link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css"><link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script><script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="data/VaderHuntingParcelsDissolved_1.js"></script>
+        <script src="data/DNRActiveRoads_2.js"></script>
+        <script>
+        var map = L.map('map', {
+            zoomControl:true, maxZoom:28, minZoom:1
+        })
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        map.createPane('pane_GoogleSatellite_0');
+        map.getPane('pane_GoogleSatellite_0').style.zIndex = 400;
+        var layer_GoogleSatellite_0 = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            pane: 'pane_GoogleSatellite_0',
+            opacity: 1.0,
+            attribution: '<a href="https://www.google.at/permissions/geoguidelines/attr-guide.html">Map data ©2015 Google</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 20
+        });
+        layer_GoogleSatellite_0;
+        map.addLayer(layer_GoogleSatellite_0);
+        function pop_VaderHuntingParcelsDissolved_1(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Category'] !== null ? autolinker.link(feature.properties['Category'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['Acres'] !== null ? autolinker.link(feature.properties['Acres'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            layer.bindPopup(popupContent, {maxHeight: 400});
+        }
+
+        function style_VaderHuntingParcelsDissolved_1_0(feature) {
+            switch(String(feature.properties['Category'])) {
+                case 'Private Lands Hunting Access':
+                    return {
+                pane: 'pane_VaderHuntingParcelsDissolved_1',
+                opacity: 1,
+                color: 'rgba(227,26,28,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(251,154,153,0.25098039215686274)',
+                interactive: false,
+            }
+                    break;
+                case 'WA Dept. of Natural Resources':
+                    return {
+                pane: 'pane_VaderHuntingParcelsDissolved_1',
+                opacity: 1,
+                color: 'rgba(51,160,44,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(178,223,138,0.25098039215686274)',
+                interactive: false,
+            }
+                    break;
+                default:
+                    return {
+                pane: 'pane_VaderHuntingParcelsDissolved_1',
+                opacity: 1,
+                color: 'rgba(35,35,35,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(126,222,47,1.0)',
+                interactive: false,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_VaderHuntingParcelsDissolved_1');
+        map.getPane('pane_VaderHuntingParcelsDissolved_1').style.zIndex = 401;
+        map.getPane('pane_VaderHuntingParcelsDissolved_1').style['mix-blend-mode'] = 'normal';
+        var layer_VaderHuntingParcelsDissolved_1 = new L.geoJson(json_VaderHuntingParcelsDissolved_1, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_VaderHuntingParcelsDissolved_1',
+            layerName: 'layer_VaderHuntingParcelsDissolved_1',
+            pane: 'pane_VaderHuntingParcelsDissolved_1',
+            onEachFeature: pop_VaderHuntingParcelsDissolved_1,
+            style: style_VaderHuntingParcelsDissolved_1_0,
+        });
+        bounds_group.addLayer(layer_VaderHuntingParcelsDissolved_1);
+        map.addLayer(layer_VaderHuntingParcelsDissolved_1);
+        function pop_DNRActiveRoads_2(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['OBJECTID'] !== null ? autolinker.link(feature.properties['OBJECTID'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_ID'] !== null ? autolinker.link(feature.properties['ROAD_ID'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_ROUTE'] !== null ? autolinker.link(feature.properties['ROAD_ROUTE'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_NM'] !== null ? autolinker.link(feature.properties['ROAD_NM'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_NO'] !== null ? autolinker.link(feature.properties['ROAD_NO'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_STATU'] !== null ? autolinker.link(feature.properties['ROAD_STATU'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_STA_1'] !== null ? autolinker.link(feature.properties['ROAD_STA_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_CONTR'] !== null ? autolinker.link(feature.properties['ROAD_CONTR'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_CON_1'] !== null ? autolinker.link(feature.properties['ROAD_CON_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_RESPO'] !== null ? autolinker.link(feature.properties['ROAD_RESPO'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_RES_1'] !== null ? autolinker.link(feature.properties['ROAD_RES_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_STA_2'] !== null ? autolinker.link(feature.properties['ROAD_STA_2'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_PUBLI'] !== null ? autolinker.link(feature.properties['ROAD_PUBLI'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_PUB_1'] !== null ? autolinker.link(feature.properties['ROAD_PUB_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_SURFA'] !== null ? autolinker.link(feature.properties['ROAD_SURFA'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_SUR_1'] !== null ? autolinker.link(feature.properties['ROAD_SUR_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_DNR_C'] !== null ? autolinker.link(feature.properties['ROAD_DNR_C'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_DNR_1'] !== null ? autolinker.link(feature.properties['ROAD_DNR_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_USGS_'] !== null ? autolinker.link(feature.properties['ROAD_USGS_'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_USG_1'] !== null ? autolinker.link(feature.properties['ROAD_USG_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_UTC_C'] !== null ? autolinker.link(feature.properties['ROAD_UTC_C'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_UTC_L'] !== null ? autolinker.link(feature.properties['ROAD_UTC_L'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['SHAPE_SOUR'] !== null ? autolinker.link(feature.properties['SHAPE_SOUR'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['SHAPE_SO_1'] !== null ? autolinker.link(feature.properties['SHAPE_SO_1'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['MAP_DISPLA'] !== null ? autolinker.link(feature.properties['MAP_DISPLA'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_MAP_D'] !== null ? autolinker.link(feature.properties['ROAD_MAP_D'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['SHAPE.LEN'] !== null ? autolinker.link(feature.properties['SHAPE.LEN'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['ROAD_INSPE'] !== null ? autolinker.link(feature.properties['ROAD_INSPE'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            layer.bindPopup(popupContent, {maxHeight: 400});
+        }
+
+        function style_DNRActiveRoads_2_0(feature) {
+            switch(String(feature.properties['ROAD_DNR_1'])) {
+                case 'Access Permanent':
+                    return {
+                pane: 'pane_DNRActiveRoads_2',
+                opacity: 1,
+                color: 'rgba(203,203,203,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: false,
+            }
+                    break;
+                case 'Access Temporary':
+                    return {
+                pane: 'pane_DNRActiveRoads_2',
+                opacity: 1,
+                color: 'rgba(247,247,247,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: false,
+            }
+                    break;
+                case 'Mainline Double':
+                    return {
+                pane: 'pane_DNRActiveRoads_2',
+                opacity: 1,
+                color: 'rgba(83,83,83,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: false,
+            }
+                    break;
+                case 'Mainline Single':
+                    return {
+                pane: 'pane_DNRActiveRoads_2',
+                opacity: 1,
+                color: 'rgba(149,149,149,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 3.0,
+                fillOpacity: 0,
+                interactive: false,
+            }
+                    break;
+                case 'Unknown':
+                    return {
+                pane: 'pane_DNRActiveRoads_2',
+                opacity: 1,
+                color: 'rgba(176,220,117,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: false,
+            }
+                    break;
+                default:
+                    return {
+                pane: 'pane_DNRActiveRoads_2',
+                opacity: 1,
+                color: 'rgba(30,201,101,1.0)',
+                dashArray: '',
+                lineCap: 'square',
+                lineJoin: 'bevel',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: false,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_DNRActiveRoads_2');
+        map.getPane('pane_DNRActiveRoads_2').style.zIndex = 402;
+        map.getPane('pane_DNRActiveRoads_2').style['mix-blend-mode'] = 'normal';
+        var layer_DNRActiveRoads_2 = new L.geoJson(json_DNRActiveRoads_2, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_DNRActiveRoads_2',
+            layerName: 'layer_DNRActiveRoads_2',
+            pane: 'pane_DNRActiveRoads_2',
+            onEachFeature: pop_DNRActiveRoads_2,
+            style: style_DNRActiveRoads_2_0,
+        });
+        bounds_group.addLayer(layer_DNRActiveRoads_2);
+        map.addLayer(layer_DNRActiveRoads_2);
+        setBounds();
+        </script>
+    </body>
+</html>
