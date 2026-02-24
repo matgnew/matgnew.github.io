@@ -800,7 +800,7 @@ function updateFilterOptions() {
     { id: 'f-customer', field: 'customer' },
   ];
 
-  const minYear = parseInt(document.getElementById('f-term').value);
+  const minYear = 2025; // term filter removed — no year restriction
 
   // ── Step 1: Snapshot all current selections BEFORE modifying any dropdown ──
   const snapshot = {};
@@ -845,7 +845,7 @@ function getFilteredData() {
   const vineyards = getSelected('f-vineyard');
   const varietals = getSelected('f-varietal');
   const customers = getSelected('f-customer');
-  const minYear   = parseInt(document.getElementById('f-term').value);
+  const minYear   = 2025; // term filter removed — no year restriction
 
   return ALL_DATA.filter(d => {
     if (owners    && !owners.has(d.owner))       return false;
