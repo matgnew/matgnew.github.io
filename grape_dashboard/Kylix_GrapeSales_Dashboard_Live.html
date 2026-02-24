@@ -731,33 +731,110 @@ function parseRows(values) {
 // ═══════════════════════════════════════════════════════════
 // POPULATE FILTER DROPDOWNS
 // ═══════════════════════════════════════════════════════════
-function populateSelect(id, values) {
+// ── FILTER OPTION HELPERS ──────────────────────────────────
+
+// Sync options in a <select multiple> to a new set of valid values.
+// Preserves currently-selected items if they remain valid;
+// removes options that are no longer in the valid set;
+// adds new options that weren't present before.
+// Always keeps the "All" sentinel at index 0.
+function syncSelect(id, validValues, isCustomer) {
   const sel = document.getElementById(id);
-  // Keep "All" option, clear rest
-  while (sel.options.length > 1) sel.remove(1);
-  [...values].sort((a,b) => String(a).localeCompare(String(b))).forEach(v => {
-    if (!v || v === 'Unknown') return;
-    const opt = document.createElement('option');
-    opt.value = v; opt.textContent = v;
-    sel.appendChild(opt);
+  const sorted = [...validValues]
+    .filter(v => v && v !== 'Unknown' && (!isCustomer || (
+      v !== 'Open' && v.toLowerCase() !== 'open' && v.toLowerCase() !== 'n/a'
+    )))
+    .sort((a, b) => String(a).localeCompare(String(b)));
+
+  // Track which values were selected before the update
+  const prevSelected = new Set(
+    Array.from(sel.selectedOptions).map(o => o.value).filter(v => v !== '__all__')
+  );
+
+  // Remove options no longer valid (keep index 0 = "All")
+  for (let i = sel.options.length - 1; i >= 1; i--) {
+    if (!sorted.includes(sel.options[i].value)) sel.remove(i);
+  }
+
+  // Add new valid options not already present
+  const existing = new Set(Array.from(sel.options).map(o => o.value));
+  sorted.forEach(v => {
+    if (!existing.has(v)) {
+      const opt = document.createElement('option');
+      opt.value = v; opt.textContent = v;
+      sel.appendChild(opt);
+    }
   });
+
+  // Re-sort options (after add) to stay alphabetical
+  const allOpts = Array.from(sel.options).slice(1).sort((a,b) => a.text.localeCompare(b.text));
+  while (sel.options.length > 1) sel.remove(1);
+  allOpts.forEach(o => sel.appendChild(o));
+
+  // Restore prior selections that are still valid
+  const nowValid = new Set(sorted);
+  let anySelected = false;
+  Array.from(sel.options).forEach(o => {
+    if (o.value === '__all__') return;
+    o.selected = prevSelected.has(o.value) && nowValid.has(o.value);
+    if (o.selected) anySelected = true;
+  });
+
+  // If nothing is selected, default back to "All"
+  sel.options[0].selected = !anySelected;
 }
 
+// Initial population (first load — no cascading yet)
 function buildFilters() {
-  const uniq = (field) => [...new Set(ALL_DATA.map(d => d[field]).filter(Boolean))];
-  populateSelect('f-owner',    uniq('owner'));
-  populateSelect('f-status',   uniq('status'));
-  populateSelect('f-state',    uniq('state'));
-  populateSelect('f-county',   uniq('county'));
-  populateSelect('f-ava',      uniq('ava'));
-  populateSelect('f-vineyard', uniq('vineyard'));
-  populateSelect('f-varietal', uniq('varietal'));
-  // Customers — exclude generic placeholders
-  const customers = [...new Set(ALL_DATA.map(d => d.customer).filter(c =>
-    c && c !== 'Open' && c.toLowerCase() !== 'open' &&
-    c.toLowerCase() !== 'n/a' && c !== ''
-  ))];
-  populateSelect('f-customer', customers);
+  const uniq = field => new Set(ALL_DATA.map(d => d[field]).filter(Boolean));
+  syncSelect('f-owner',    uniq('owner'));
+  syncSelect('f-status',   uniq('status'));
+  syncSelect('f-state',    uniq('state'));
+  syncSelect('f-county',   uniq('county'));
+  syncSelect('f-ava',      uniq('ava'));
+  syncSelect('f-vineyard', uniq('vineyard'));
+  syncSelect('f-varietal', uniq('varietal'));
+  syncSelect('f-customer', uniq('customer'), true);
+}
+
+// Cascading update — called after any filter changes.
+// Computes which values are still reachable given the OTHER active
+// filters (i.e. every filter except the one being updated), then
+// syncs each dropdown to only show those reachable values.
+function updateFilterOptions() {
+  const FILTER_FIELDS = [
+    { id: 'f-owner',    field: 'owner' },
+    { id: 'f-status',   field: 'status' },
+    { id: 'f-state',    field: 'state' },
+    { id: 'f-county',   field: 'county' },
+    { id: 'f-ava',      field: 'ava' },
+    { id: 'f-vineyard', field: 'vineyard' },
+    { id: 'f-varietal', field: 'varietal' },
+    { id: 'f-customer', field: 'customer' },
+  ];
+
+  const minYear = parseInt(document.getElementById('f-term').value);
+
+  // For each filter, compute valid options by applying all OTHER filters
+  FILTER_FIELDS.forEach(({ id, field }) => {
+    // Get current selections for all filters EXCEPT this one
+    const otherSelections = {};
+    FILTER_FIELDS.forEach(f => {
+      if (f.id !== id) otherSelections[f.field] = getSelected(f.id);
+    });
+
+    // Find all data rows that pass the other filters
+    const reachable = ALL_DATA.filter(d => {
+      for (const [f, sel] of Object.entries(otherSelections)) {
+        if (sel && !sel.has(d[f])) return false;
+      }
+      if (minYear > 2025 && d.finalYear !== null && d.finalYear < minYear) return false;
+      return true;
+    });
+
+    const validValues = new Set(reachable.map(d => d[field]).filter(Boolean));
+    syncSelect(id, validValues, field === 'customer');
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1058,15 +1135,23 @@ document.getElementById('tbl-head').addEventListener('click', e => {
 // ═══════════════════════════════════════════════════════════
 // FILTER WIRING
 // ═══════════════════════════════════════════════════════════
-['f-owner','f-status','f-state','f-county','f-ava','f-vineyard','f-varietal','f-customer'].forEach(id => {
-  document.getElementById(id).addEventListener('change', renderDashboard);
+const FILTER_IDS = ['f-owner','f-status','f-state','f-county','f-ava','f-vineyard','f-varietal','f-customer'];
+
+FILTER_IDS.forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    updateFilterOptions();  // cascade — trim other dropdowns
+    renderDashboard();      // redraw charts + table
+  });
 });
+
 document.getElementById('f-term').addEventListener('input', function() {
   document.getElementById('f-term-lbl').textContent = this.value === '2025' ? '2025+' : this.value + '+';
+  updateFilterOptions();
   renderDashboard();
 });
+
 document.getElementById('reset-btn').addEventListener('click', () => {
-  ['f-owner','f-status','f-state','f-county','f-ava','f-vineyard','f-varietal','f-customer'].forEach(id => {
+  FILTER_IDS.forEach(id => {
     const sel = document.getElementById(id);
     Array.from(sel.options).forEach(o => o.selected = o.value === '__all__');
   });
@@ -1074,6 +1159,8 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   document.getElementById('f-term-lbl').textContent = '2025+';
   sortCol = null; sortDir = 1;
   document.querySelectorAll('#tbl-head th').forEach(t => t.classList.remove('asc','desc'));
+  // Restore all options to full universe before re-rendering
+  buildFilters();
   renderDashboard();
 });
 
