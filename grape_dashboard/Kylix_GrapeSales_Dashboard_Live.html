@@ -259,6 +259,39 @@ td.r { text-align: right; font-variant-numeric: tabular-nums; }
 .p-pending { background: #f3e8ff; color: #6b21a8; }
 .p-mothball { background: #fee2e2; color: #991b1b; }
 
+/* ── TOGGLE BUTTONS ── */
+.toggle-wrap {
+  display: flex; gap: 4px;
+}
+.tog {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--parchment); color: var(--dust);
+  cursor: pointer; transition: all 0.15s;
+}
+.tog.active {
+  background: var(--wine); color: var(--cream); border-color: var(--wine);
+}
+.tog:hover:not(.active) { border-color: var(--wine-muted); color: var(--wine); }
+
+/* ── STANDARD CHART HEIGHT (all charts use this) ── */
+.chart-std { position: relative; height: 240px; }
+
+/* ── SCROLLABLE REVENUE LIST (like % Sold) ── */
+.rev-list {
+  display: flex; flex-direction: column; gap: 9px;
+  max-height: 260px; overflow-y: auto;
+}
+.rev-item {}
+.rev-meta { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.rev-name { font-size: 10px; color: var(--ink); }
+.rev-stat { font-size: 9px; color: var(--dust); }
+.rev-bg { height: 5px; background: var(--parchment); border-radius: 3px; overflow: hidden; }
+.rev-fill { height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  transition: width 0.5s ease; }
+
 /* ── FOOTER ── */
 footer {
   background: var(--parchment2); border-top: 1px solid var(--border);
@@ -373,7 +406,10 @@ footer {
       <div class="card" id="card-ava-rev">
         <div class="card-head">
           <div class="card-title" id="ava-rev-title">Revenue by AVA</div>
-          <div class="card-badge" id="ava-rev-badge">Stacked by Status · $M</div>
+          <div class="toggle-wrap">
+            <button class="tog active" id="tog-ava-rev" onclick="setToggle('ava','rev')">Revenue</button>
+            <button class="tog"        id="tog-ava-tons" onclick="setToggle('ava','tons')">Tons</button>
+          </div>
         </div>
         <div class="card-body">
           <div class="chart-h-ava"><canvas id="c-ava-rev"></canvas></div>
@@ -381,11 +417,14 @@ footer {
       </div>
       <div class="card">
         <div class="card-head">
-          <div class="card-title">Tonnage by Status</div>
-          <div class="card-badge">Tons · %</div>
+          <div class="card-title" id="donut-title">Tonnage by Status</div>
+          <div class="toggle-wrap">
+            <button class="tog active" id="tog-donut-tons" onclick="setToggle('donut','tons')">Tons</button>
+            <button class="tog"        id="tog-donut-acres" onclick="setToggle('donut','acres')">Acres</button>
+          </div>
         </div>
-        <div class="card-body">
-          <div class="chart-h200"><canvas id="c-status-donut"></canvas></div>
+        <div class="card-body" style="display:flex;align-items:center;justify-content:center;">
+          <div class="chart-std" style="width:100%;"><canvas id="c-status-donut"></canvas></div>
         </div>
       </div>
     </div>
@@ -403,8 +442,11 @@ footer {
       </div>
       <div class="card">
         <div class="card-head">
-          <div class="card-title">Wtd. Avg $/Ton by Vineyard</div>
-          <div class="card-badge">Colored by AVA</div>
+          <div class="card-title" id="ppt-title">Wtd. Avg $/Ton by Vineyard</div>
+          <div class="toggle-wrap">
+            <button class="tog active" id="tog-ppt-ppt"   onclick="setToggle('ppt','ppt')">$/Ton</button>
+            <button class="tog"        id="tog-ppt-acres" onclick="setToggle('ppt','acres')">Acres</button>
+          </div>
         </div>
         <div class="card-body">
           <div class="chart-h-ppt"><canvas id="c-ppt-vineyard"></canvas></div>
@@ -416,22 +458,45 @@ footer {
     <div class="row2">
       <div class="card">
         <div class="card-head">
-          <div class="card-title">Revenue by Varietal</div>
-          <div class="card-badge">Top 12</div>
+          <div class="card-title" id="var-title">Revenue by Varietal</div>
+          <div class="toggle-wrap">
+            <button class="tog active" id="tog-var-rev"  onclick="setToggle('var','rev')">Revenue</button>
+            <button class="tog"        id="tog-var-tons" onclick="setToggle('var','tons')">Tons</button>
+          </div>
         </div>
         <div class="card-body">
-          <div class="chart-h200"><canvas id="c-var-rev"></canvas></div>
+          <div class="chart-std"><canvas id="c-var-rev"></canvas></div>
         </div>
       </div>
       <div class="card">
         <div class="card-head">
-          <div class="card-title">Revenue by Remaining Contract Term</div>
-          <div class="card-badge">Final Year · $M</div>
+          <div class="card-title" id="term-title">Revenue by Remaining Contract Term</div>
+          <div class="toggle-wrap">
+            <button class="tog active" id="tog-term-rev"  onclick="setToggle('term','rev')">Revenue</button>
+            <button class="tog"        id="tog-term-tons" onclick="setToggle('term','tons')">Tons</button>
+          </div>
         </div>
         <div class="card-body">
-          <div class="chart-h200"><canvas id="c-term-rev"></canvas></div>
+          <div class="chart-std"><canvas id="c-term-rev"></canvas></div>
         </div>
       </div>
+    </div>
+
+    <!-- ROW 3b: Revenue by Customer -->
+    <div class="row2">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title" id="cust-title">Revenue by Customer</div>
+          <div class="toggle-wrap">
+            <button class="tog active" id="tog-cust-rev"  onclick="setToggle('cust','rev')">Revenue</button>
+            <button class="tog"        id="tog-cust-tons" onclick="setToggle('cust','tons')">Tons</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="rev-list" id="rev-customer"></div>
+        </div>
+      </div>
+      <div class="card" style="visibility:hidden;"></div>
     </div>
 
     <!-- ROW 4: Detail Table -->
@@ -624,7 +689,8 @@ function detectColumns(headerRow) {
   COL.county     = findCol(map, ['county']);
   COL.finalYear  = findCol(map, ['final year','last year','end year','term end','finalyear']);
   COL.contract   = findCol(map, ['contract','contract record','contract name','contract #']);
-  COL.block      = findCol(map, ['block','block name','block id','block code','block #']);
+  COL.block      = findCol(map, ['block','block name','block id','block #']);
+  COL.blockCode  = findCol(map, ['block code','blockcode','blk code','blk cd','code']);
 
   console.log('Detected columns:', COL);
   console.log('Header row:', headerRow.slice(0, 40));
@@ -708,10 +774,14 @@ function parseRows(values) {
     const state = String(getV(COL.state) || '').trim() || 'Unknown';
     const county = String(getV(COL.county) || '').trim() || 'Unknown';
     const customer = String(getV(COL.customer) || '').trim() || 'Open';
-    const block    = String(getV(COL.block)    || '').trim();
+    const block     = String(getV(COL.block)     || '').trim();
+    const blockCode = String(getV(COL.blockCode) || '').trim();
+    // vinCode = first 3 chars of blockCode if present, else first 3 of vineyard name
+    const vinCode   = blockCode ? blockCode.slice(0,3).toUpperCase()
+                                : vineyard.slice(0,3).toUpperCase();
 
     data.push({
-      owner, vineyard, block, varietal, status, customer,
+      owner, vineyard, block, blockCode, vinCode, varietal, status, customer,
       tons: tonsRaw, ppt: pptRaw, revenue,
       acres: acresRaw, tpa,
       ava, state, county, finalYear,
@@ -905,6 +975,27 @@ function fmtK(n)  { if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M'; if(n>=1e3) ret
 function fmtN(n)  { return Math.round(n).toLocaleString(); }
 
 // ═══════════════════════════════════════════════════════════
+// TOGGLE STATE
+// ═══════════════════════════════════════════════════════════
+const TOGGLES = {
+  donut: 'tons',   // tons | acres
+  ava:   'rev',    // rev  | tons
+  ppt:   'ppt',    // ppt  | acres
+  var:   'rev',    // rev  | tons
+  term:  'rev',    // rev  | tons
+  cust:  'rev',    // rev  | tons
+};
+
+function setToggle(chart, val) {
+  TOGGLES[chart] = val;
+  // Update button active states
+  document.querySelectorAll(`[id^="tog-${chart}-"]`).forEach(btn => {
+    btn.classList.toggle('active', btn.id === `tog-${chart}-${val}`);
+  });
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════
 // DASHBOARD RENDER
 // ═══════════════════════════════════════════════════════════
 function renderDashboard() {
@@ -935,35 +1026,35 @@ function renderDashboard() {
   document.getElementById('k-tpa-sub').textContent = `Tons per acre`;
   // (filter-count display removed)
 
-  // ── Chart 1: Revenue by AVA or Vineyard (switches when single AVA is active) ──
+  // ── Chart 1: Revenue/Tons by AVA or Vineyard ──
   const avasInData = [...new Set(data.map(d=>d.ava))].filter(Boolean);
   const singleAva  = avasInData.length === 1;
   const groupField = singleAva ? 'vineyard' : 'ava';
   const groupLabels = singleAva
     ? [...new Set(data.map(d=>d.vineyard))].sort()
     : avasInData.sort();
+  const avaMode = TOGGLES.ava; // 'rev' or 'tons'
   const statuses = ['Sold','Open','Custom Crush','Pending'];
   const avaDatasets = statuses.map(st => ({
     label: st,
     data: groupLabels.map(g =>
-      data.filter(d=>d[groupField]===g&&d.status===st).reduce((s,d)=>s+d.revenue,0)/1e6
+      data.filter(d=>d[groupField]===g&&d.status===st)
+          .reduce((s,d) => s + (avaMode==='rev' ? d.revenue : d.tons), 0)
+          / (avaMode==='rev' ? 1e6 : 1)
     ),
     backgroundColor: STATUS_COLORS[st] || '#aaa',
     borderRadius: 2,
   }));
-  // Update card title + badge dynamically
+  const avaBase = singleAva ? `by Vineyard (${avasInData[0]})` : 'by AVA';
   document.getElementById('ava-rev-title').textContent =
-    singleAva ? `Revenue by Vineyard (${avasInData[0]})` : 'Revenue by AVA';
-  document.getElementById('ava-rev-badge').textContent =
-    singleAva ? 'Stacked by Status · $M' : 'Stacked by Status · $M';
+    (avaMode==='rev' ? 'Revenue ' : 'Tons ') + avaBase;
   // Match height of the % Sold progress list card
   const progCard = document.getElementById('card-prog');
   const avaChartWrap = document.querySelector('.chart-h-ava');
   if (progCard && avaChartWrap) {
     const progHeight = progCard.offsetHeight;
     const headerHeight = document.querySelector('#card-ava-rev .card-head')?.offsetHeight || 42;
-    const bodyPad = 28; // card-body padding top+bottom
-    const targetH = Math.max(180, progHeight - headerHeight - bodyPad);
+    const targetH = Math.max(180, progHeight - headerHeight - 28);
     avaChartWrap.style.height = targetH + 'px';
   }
   mkChart('c-ava-rev', {
@@ -974,26 +1065,40 @@ function renderDashboard() {
       plugins: { legend: { labels: { font:{family:FONT,size:9}, color:'#1c1712', boxWidth:10 } } },
       scales: {
         x: { stacked:true, ticks:{...TICK_STYLE,maxRotation:35}, grid:{display:false} },
-        y: { stacked:true, ticks:{...TICK_STYLE, callback:v=>'$'+v.toFixed(0)+'M'}, grid:GRID_STYLE }
+        y: { stacked:true, ticks:{...TICK_STYLE,
+          callback: v => avaMode==='rev' ? '$'+v.toFixed(0)+'M' : fmtN(v)+'T'
+        }, grid:GRID_STYLE }
       }
     }
   });
 
-  // ── Chart 2: Status Donut (tons) ──
-  const statusTons = {};
-  data.forEach(d => { statusTons[d.status] = (statusTons[d.status]||0) + d.tons; });
-  const statusKeys = Object.keys(statusTons).sort((a,b)=>statusTons[b]-statusTons[a]);
+  // ── Chart 2: Status Donut (tons or acres) ──
+  const donutMode = TOGGLES.donut;
+  document.getElementById('donut-title').textContent =
+    donutMode === 'tons' ? 'Tonnage by Status' : 'Acreage by Status';
+  const statusAgg = {};
+  data.forEach(d => {
+    statusAgg[d.status] = (statusAgg[d.status]||0) + (donutMode==='tons' ? d.tons : d.acres);
+  });
+  const statusKeys = Object.keys(statusAgg).sort((a,b)=>statusAgg[b]-statusAgg[a]);
+  const donutTotal = statusKeys.reduce((s,k)=>s+statusAgg[k], 0);
+  const donutUnit = donutMode === 'tons' ? 'T' : 'ac';
   mkChart('c-status-donut', {
     type: 'doughnut',
     data: {
       labels: statusKeys,
-      datasets: [{ data: statusKeys.map(s=>statusTons[s]), backgroundColor: statusKeys.map(s=>STATUS_COLORS[s]||'#aaa'), borderWidth:2, borderColor:'#fff' }]
+      datasets: [{ data: statusKeys.map(s=>statusAgg[s]),
+        backgroundColor: statusKeys.map(s=>STATUS_COLORS[s]||'#aaa'),
+        borderWidth: 3, borderColor: '#fff' }]
     },
     options: {
-      responsive:true, maintainAspectRatio:false, cutout:'58%',
+      responsive:true, maintainAspectRatio:false, cutout:'45%',
+      layout: { padding: 10 },
       plugins: {
-        legend: { position:'right', labels:{font:{family:FONT,size:9},color:'#1c1712',padding:10,boxWidth:10} },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtN(ctx.raw)}T (${(ctx.raw/totalTons*100).toFixed(1)}%)` } }
+        legend: { position:'right', labels:{font:{family:FONT,size:9},color:'#1c1712',padding:12,boxWidth:10} },
+        tooltip: { callbacks: { label: ctx =>
+          ` ${ctx.label}: ${fmtN(ctx.raw)}${donutUnit} (${donutTotal>0?(ctx.raw/donutTotal*100).toFixed(1):0}%)`
+        }}
       }
     }
   });
@@ -1019,17 +1124,26 @@ function renderDashboard() {
       <div class="prog-bg"><div class="prog-fill" style="width:${v.pct*100}%"></div></div>
     </div>`).join('');
 
-  // ── Chart 4: $/ton by vineyard, colored by AVA ──
-  const vinPPT = Object.entries(
-    data.reduce((acc,d) => {
-      if (!acc[d.vineyard]) acc[d.vineyard] = {rev:0, tons:0, ava:d.ava};
-      acc[d.vineyard].rev  += d.revenue;
-      acc[d.vineyard].tons += d.tons;
-      return acc;
-    }, {})
-  ).map(([name,v]) => ({name, ppt: v.tons>0 ? v.rev/v.tons : 0, ava: v.ava}))
-   .filter(v => v.ppt > 0)
-   .sort((a,b) => b.ppt - a.ppt);
+  // ── Chart 4: $/Ton or Acres by Vineyard, axis uses vinCode ──
+  const pptMode = TOGGLES.ppt; // 'ppt' or 'acres'
+  document.getElementById('ppt-title').textContent =
+    pptMode === 'ppt' ? 'Wtd. Avg $/Ton by Vineyard' : 'Acres by Vineyard';
+  const vinAgg = data.reduce((acc,d) => {
+    if (!acc[d.vineyard]) acc[d.vineyard] = {rev:0, tons:0, acres:0, ava:d.ava, code:d.vinCode};
+    acc[d.vineyard].rev   += d.revenue;
+    acc[d.vineyard].tons  += d.tons;
+    acc[d.vineyard].acres += d.acres;
+    return acc;
+  }, {});
+  const vinPPT = Object.entries(vinAgg)
+    .map(([name,v]) => ({
+      name,
+      code: v.code || name.slice(0,3).toUpperCase(),
+      val: pptMode==='ppt' ? (v.tons>0 ? v.rev/v.tons : 0) : v.acres,
+      ava: v.ava
+    }))
+    .filter(v => v.val > 0)
+    .sort((a,b) => b.val - a.val);
 
   // Set ppt chart height to match the prog-list card height
   const pptWrap = document.querySelector('.chart-h-ppt');
@@ -1042,9 +1156,9 @@ function renderDashboard() {
   mkChart('c-ppt-vineyard', {
     type: 'bar',
     data: {
-      labels: vinPPT.map(v=>v.name),
+      labels: vinPPT.map(v=>v.code),
       datasets: [{
-        data: vinPPT.map(v=>v.ppt),
+        data: vinPPT.map(v=>v.val),
         backgroundColor: vinPPT.map(v=>getAvaColor(v.ava)),
         borderRadius: 3,
       }]
@@ -1054,45 +1168,64 @@ function renderDashboard() {
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{
-          label: ctx => ` $${fmtN(ctx.raw)}/T`,
+          label: ctx => pptMode==='ppt'
+            ? ` $${fmtN(ctx.raw)}/T`
+            : ` ${fmtN(ctx.raw)} acres`,
+          title: ([ctx]) => vinPPT[ctx.dataIndex].name,
           afterLabel: ctx => ` AVA: ${vinPPT[ctx.dataIndex].ava}`
         }}
       },
       scales:{
         x:{ticks:{...TICK_STYLE, maxRotation:40, font:{family:FONT,size:9}},grid:{display:false}},
-        y:{ticks:{...TICK_STYLE, callback:v=>'$'+fmtN(v)},grid:GRID_STYLE}
+        y:{ticks:{...TICK_STYLE,
+          callback: v => pptMode==='ppt' ? '$'+fmtN(v) : fmtN(v)
+        }, grid:GRID_STYLE}
       }
     }
   });
 
-  // ── Chart 5: Revenue by varietal (top 12) ──
-  const varRev = Object.entries(
-    data.reduce((acc,d)=>{acc[d.varietal]=(acc[d.varietal]||0)+d.revenue;return acc;},{})
+  // ── Chart 5: Revenue or Tons by Varietal (top 12) ──
+  const varMode = TOGGLES.var;
+  document.getElementById('var-title').textContent =
+    varMode === 'rev' ? 'Revenue by Varietal' : 'Tons by Varietal';
+  const varData = Object.entries(
+    data.reduce((acc,d) => {
+      acc[d.varietal] = (acc[d.varietal]||0) + (varMode==='rev' ? d.revenue : d.tons);
+      return acc;
+    }, {})
   ).sort((a,b)=>b[1]-a[1]).slice(0,12);
   mkChart('c-var-rev', {
     type:'bar',
     data:{
-      labels: varRev.map(v=>v[0]),
-      datasets:[{data:varRev.map(v=>v[1]/1e6),backgroundColor:'#6b1f2a99',borderRadius:3}]
+      labels: varData.map(v=>v[0]),
+      datasets:[{
+        data: varData.map(v => varMode==='rev' ? v[1]/1e6 : v[1]),
+        backgroundColor:'#6b1f2a99', borderRadius:3
+      }]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` $${ctx.raw.toFixed(1)}M`}}},
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{
+        label: ctx => varMode==='rev' ? ` $${ctx.raw.toFixed(1)}M` : ` ${fmtN(ctx.raw)} T`
+      }}},
       scales:{
         x:{ticks:{...TICK_STYLE,maxRotation:38},grid:{display:false}},
-        y:{ticks:{...TICK_STYLE,callback:v=>'$'+v+'M'},grid:GRID_STYLE}
+        y:{ticks:{...TICK_STYLE,
+          callback: v => varMode==='rev' ? '$'+v+'M' : fmtN(v)
+        },grid:GRID_STYLE}
       }
     }
   });
 
-  // ── Chart 6: Revenue by remaining contract term ──
-  // Group by finalYear; rows with null finalYear = "Open / Evergreen"
+  // ── Chart 6: Revenue or Tons by Remaining Contract Term ──
+  const termMode = TOGGLES.term;
+  document.getElementById('term-title').textContent =
+    termMode === 'rev' ? 'Revenue by Remaining Contract Term' : 'Tons by Remaining Contract Term';
   const termMap = {};
   data.forEach(d => {
     const label = d.finalYear ? String(d.finalYear) : 'Open / EG';
-    termMap[label] = (termMap[label] || 0) + d.revenue;
+    termMap[label] = (termMap[label]||0) + (termMode==='rev' ? d.revenue : d.tons);
   });
-  // Sort: Open/EG first, then years ascending
   const termLabels = Object.keys(termMap).sort((a, b) => {
     if (a === 'Open / EG') return -1;
     if (b === 'Open / EG') return 1;
@@ -1111,24 +1244,48 @@ function renderDashboard() {
     data: {
       labels: termLabels,
       datasets: [{
-        data: termLabels.map(l => termMap[l] / 1e6),
-        backgroundColor: termColors,
-        borderRadius: 4,
+        data: termLabels.map(l => termMode==='rev' ? termMap[l]/1e6 : termMap[l]),
+        backgroundColor: termColors, borderRadius: 4,
       }]
     },
     options: {
-      indexAxis: 'y',
-      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` $${ctx.raw.toFixed(1)}M` } }
+        tooltip: { callbacks: { label: ctx =>
+          termMode==='rev' ? ` $${ctx.raw.toFixed(1)}M` : ` ${fmtN(ctx.raw)} T`
+        }}
       },
       scales: {
-        x: { ticks: { ...TICK_STYLE, callback: v => '$' + v + 'M' }, grid: GRID_STYLE },
+        x: { ticks: { ...TICK_STYLE,
+          callback: v => termMode==='rev' ? '$'+v+'M' : fmtN(v)
+        }, grid: GRID_STYLE },
         y: { ticks: { ...TICK_STYLE }, grid: { display: false } }
       }
     }
   });
+
+  // ── Chart 7: Revenue or Tons by Customer (scrollable progress bars) ──
+  const custMode = TOGGLES.cust;
+  document.getElementById('cust-title').textContent =
+    custMode === 'rev' ? 'Revenue by Customer' : 'Tons by Customer';
+  const custAgg = {};
+  data.forEach(d => {
+    const c = d.customer;
+    if (!c || c.toLowerCase() === 'open' || c === '') return;
+    custAgg[c] = (custAgg[c]||0) + (custMode==='rev' ? d.revenue : d.tons);
+  });
+  const custList = Object.entries(custAgg)
+    .sort((a,b) => b[1]-a[1]);
+  const custMax = custList.length > 0 ? custList[0][1] : 1;
+  document.getElementById('rev-customer').innerHTML = custList.map(([name, val]) => `
+    <div class="rev-item">
+      <div class="rev-meta">
+        <span class="rev-name">${name}</span>
+        <span class="rev-stat">${custMode==='rev' ? fmtK(val) : fmtN(val)+' T'}</span>
+      </div>
+      <div class="rev-bg"><div class="rev-fill" style="width:${(val/custMax*100).toFixed(1)}%"></div></div>
+    </div>`).join('');
 
   // ── Detail Table ──
   const tableData = sortCol
