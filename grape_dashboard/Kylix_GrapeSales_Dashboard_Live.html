@@ -496,11 +496,20 @@ const DRIVE_ID    = 'b!THdqobnhOESr0NxVFuSL0WZopZ7ho7tPumU34s07K3exJUofRGtKR7P09
 const ITEM_ID     = '01W4NDSPSK5XQCK4BKXVCJJHZZREBVITH3';
 const SHEET_NAME  = 'Allocation';
 
+// REDIRECT URI: points to auth-redirect.html in the same folder.
+// Register THAT URL (not this dashboard URL) in Azure Portal:
+// App Registration → Authentication → Single-page application
+const REDIRECT_URI = (() => {
+  const base = window.location.href.split('?')[0].split('#')[0];
+  const folder = base.substring(0, base.lastIndexOf('/') + 1);
+  return folder + 'auth-redirect.html';
+})();
+
 const msalConfig = {
   auth: {
     clientId: CLIENT_ID,
     authority: `https://login.microsoftonline.com/${TENANT_ID}`,
-    redirectUri: window.location.href.split('?')[0].split('#')[0]
+    redirectUri: REDIRECT_URI
   },
   cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
 };
@@ -544,18 +553,30 @@ function hideOverlay() {
 // ═══════════════════════════════════════════════════════════
 async function getToken() {
   await msalInstance.initialize();
-  // Handle redirect response first
-  await msalInstance.handleRedirectPromise();
+
+  // If this page is the auth-redirect page being loaded inside a popup,
+  // just handle the response and stop — don't try to authenticate again.
+  if (window.location.pathname.endsWith('auth-redirect.html')) return null;
 
   const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
     try {
-      const result = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      const result = await msalInstance.acquireTokenSilent({
+        scopes: SCOPES,
+        account: accounts[0],
+        redirectUri: REDIRECT_URI   // must match Azure registration
+      });
       return result.accessToken;
-    } catch (e) { /* fall through to interactive */ }
+    } catch (e) {
+      // Silent failed — fall through to popup
+    }
   }
-  // Interactive login
-  const result = await msalInstance.loginPopup({ scopes: SCOPES });
+
+  // Interactive popup — redirect URI points to auth-redirect.html, not this page
+  const result = await msalInstance.loginPopup({
+    scopes: SCOPES,
+    redirectUri: REDIRECT_URI
+  });
   return result.accessToken;
 }
 
