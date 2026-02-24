@@ -246,6 +246,9 @@ tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; 
 tbody tr:hover { background: var(--parchment); }
 tbody td { padding: 7px 10px; white-space: nowrap; }
 td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.chart-h-ava  { position: relative; height: 200px; }
+.chart-h-ppt  { position: relative; height: 300px; }
+
 .pill {
   display: inline-block; padding: 2px 7px; border-radius: 20px;
   font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
@@ -269,7 +272,7 @@ footer {
 
 <!-- LOADING OVERLAY -->
 <div id="loading-overlay">
-  <div class="loading-logo">Kylix Vineyards</div>
+  <div class="loading-logo">Grapevine Capital</div>
   <div class="loading-sub">2026 Grape Sales Dashboard</div>
   <div class="loading-bar-wrap"><div class="loading-bar" id="load-bar"></div></div>
   <div class="loading-status" id="load-status">Connecting to Microsoft 365…</div>
@@ -280,7 +283,7 @@ footer {
 <header>
   <div class="header-left">
     <h1>Grape Sales Dashboard</h1>
-    <div class="subtitle">Kylix Vineyards &nbsp;·&nbsp; 2026 Vintage Season</div>
+    <div class="subtitle">2026 Vintage</div>
   </div>
   <div class="header-right">
     <div class="live-badge"><span class="live-dot"></span>Live · SharePoint</div>
@@ -293,10 +296,9 @@ footer {
 
   <!-- SIDEBAR FILTERS -->
   <aside class="sidebar">
-    <div class="sidebar-head">
-      Filters
-      <span class="filter-count" id="filter-count">—</span>
-    </div>
+    <div class="sidebar-head">Filters</div>
+
+    <button class="reset-btn" id="reset-btn-top" style="margin-bottom:14px;">↺ Reset All Filters</button>
 
     <div class="fg">
       <label>Owner</label>
@@ -329,17 +331,6 @@ footer {
     <div class="fg">
       <label>Customer</label>
       <select id="f-customer" multiple><option value="__all__" selected>All Customers</option></select>
-    </div>
-    <div class="fg">
-      <label>Remaining Term — Final Year ≥</label>
-      <div class="range-wrap">
-        <input type="range" id="f-term" min="2025" max="2030" value="2025" step="1">
-        <div class="range-labels">
-          <span>2025</span>
-          <span class="mid" id="f-term-lbl">2025+</span>
-          <span>2030+</span>
-        </div>
-      </div>
     </div>
 
     <button class="reset-btn" id="reset-btn">↺ Reset All Filters</button>
@@ -379,13 +370,13 @@ footer {
 
     <!-- ROW 1: Revenue by AVA + Status Donut -->
     <div class="row2">
-      <div class="card">
+      <div class="card" id="card-ava-rev">
         <div class="card-head">
-          <div class="card-title">Revenue by AVA</div>
-          <div class="card-badge">Stacked by Status · $M</div>
+          <div class="card-title" id="ava-rev-title">Revenue by AVA</div>
+          <div class="card-badge" id="ava-rev-badge">Stacked by Status · $M</div>
         </div>
         <div class="card-body">
-          <div class="chart-h200"><canvas id="c-ava-rev"></canvas></div>
+          <div class="chart-h-ava"><canvas id="c-ava-rev"></canvas></div>
         </div>
       </div>
       <div class="card">
@@ -400,8 +391,8 @@ footer {
     </div>
 
     <!-- ROW 2: % Sold + $/ton by Vineyard -->
-    <div class="row2">
-      <div class="card">
+    <div class="row2 row2-linked" id="row2-wrap">
+      <div class="card" id="card-prog">
         <div class="card-head">
           <div class="card-title">% Sold by Vineyard</div>
           <div class="card-badge">Sorted Most → Least</div>
@@ -416,7 +407,7 @@ footer {
           <div class="card-badge">Colored by AVA</div>
         </div>
         <div class="card-body">
-          <div class="chart-h300"><canvas id="c-ppt-vineyard"></canvas></div>
+          <div class="chart-h-ppt"><canvas id="c-ppt-vineyard"></canvas></div>
         </div>
       </div>
     </div>
@@ -942,25 +933,47 @@ function renderDashboard() {
   document.getElementById('k-acres-sub').textContent = `Filtered acres`;
   document.getElementById('k-tpa').textContent     = wtdTPA.toFixed(2);
   document.getElementById('k-tpa-sub').textContent = `Tons per acre`;
-  document.getElementById('filter-count').textContent = fmtN(data.length);
+  // (filter-count display removed)
 
-  // ── Chart 1: Revenue by AVA (stacked bar) ──
-  const avas = [...new Set(data.map(d=>d.ava))].sort();
+  // ── Chart 1: Revenue by AVA or Vineyard (switches when single AVA is active) ──
+  const avasInData = [...new Set(data.map(d=>d.ava))].filter(Boolean);
+  const singleAva  = avasInData.length === 1;
+  const groupField = singleAva ? 'vineyard' : 'ava';
+  const groupLabels = singleAva
+    ? [...new Set(data.map(d=>d.vineyard))].sort()
+    : avasInData.sort();
   const statuses = ['Sold','Open','Custom Crush','Pending'];
   const avaDatasets = statuses.map(st => ({
     label: st,
-    data: avas.map(a => data.filter(d=>d.ava===a&&d.status===st).reduce((s,d)=>s+d.revenue,0)/1e6),
+    data: groupLabels.map(g =>
+      data.filter(d=>d[groupField]===g&&d.status===st).reduce((s,d)=>s+d.revenue,0)/1e6
+    ),
     backgroundColor: STATUS_COLORS[st] || '#aaa',
     borderRadius: 2,
   }));
+  // Update card title + badge dynamically
+  document.getElementById('ava-rev-title').textContent =
+    singleAva ? `Revenue by Vineyard (${avasInData[0]})` : 'Revenue by AVA';
+  document.getElementById('ava-rev-badge').textContent =
+    singleAva ? 'Stacked by Status · $M' : 'Stacked by Status · $M';
+  // Match height of the % Sold progress list card
+  const progCard = document.getElementById('card-prog');
+  const avaChartWrap = document.querySelector('.chart-h-ava');
+  if (progCard && avaChartWrap) {
+    const progHeight = progCard.offsetHeight;
+    const headerHeight = document.querySelector('#card-ava-rev .card-head')?.offsetHeight || 42;
+    const bodyPad = 28; // card-body padding top+bottom
+    const targetH = Math.max(180, progHeight - headerHeight - bodyPad);
+    avaChartWrap.style.height = targetH + 'px';
+  }
   mkChart('c-ava-rev', {
     type: 'bar',
-    data: { labels: avas, datasets: avaDatasets },
+    data: { labels: groupLabels, datasets: avaDatasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { labels: { font:{family:FONT,size:9}, color:'#1c1712', boxWidth:10 } } },
       scales: {
-        x: { stacked:true, ticks:{...TICK_STYLE,maxRotation:30}, grid:{display:false} },
+        x: { stacked:true, ticks:{...TICK_STYLE,maxRotation:35}, grid:{display:false} },
         y: { stacked:true, ticks:{...TICK_STYLE, callback:v=>'$'+v.toFixed(0)+'M'}, grid:GRID_STYLE }
       }
     }
@@ -1018,6 +1031,14 @@ function renderDashboard() {
    .filter(v => v.ppt > 0)
    .sort((a,b) => b.ppt - a.ppt);
 
+  // Set ppt chart height to match the prog-list card height
+  const pptWrap = document.querySelector('.chart-h-ppt');
+  if (pptWrap && progCard) {
+    const progH = progCard.offsetHeight;
+    const pptHeaderH = document.querySelector('#c-ppt-vineyard')?.closest('.card')
+      ?.querySelector('.card-head')?.offsetHeight || 42;
+    pptWrap.style.height = Math.max(200, progH - pptHeaderH - 28) + 'px';
+  }
   mkChart('c-ppt-vineyard', {
     type: 'bar',
     data: {
@@ -1029,17 +1050,17 @@ function renderDashboard() {
       }]
     },
     options: {
-      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{display:false},
         tooltip:{callbacks:{
           label: ctx => ` $${fmtN(ctx.raw)}/T`,
-          afterLabel: (ctx) => ` AVA: ${vinPPT[ctx.dataIndex].ava}`
+          afterLabel: ctx => ` AVA: ${vinPPT[ctx.dataIndex].ava}`
         }}
       },
       scales:{
-        x:{ticks:{...TICK_STYLE,callback:v=>'$'+fmtN(v)},grid:GRID_STYLE},
-        y:{ticks:{...TICK_STYLE},grid:{display:false}}
+        x:{ticks:{...TICK_STYLE, maxRotation:40, font:{family:FONT,size:9}},grid:{display:false}},
+        y:{ticks:{...TICK_STYLE, callback:v=>'$'+fmtN(v)},grid:GRID_STYLE}
       }
     }
   });
@@ -1096,14 +1117,15 @@ function renderDashboard() {
       }]
     },
     options: {
+      indexAxis: 'y',
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
         tooltip: { callbacks: { label: ctx => ` $${ctx.raw.toFixed(1)}M` } }
       },
       scales: {
-        x: { ticks: { ...TICK_STYLE }, grid: { display: false } },
-        y: { ticks: { ...TICK_STYLE, callback: v => '$' + v + 'M' }, grid: GRID_STYLE }
+        x: { ticks: { ...TICK_STYLE, callback: v => '$' + v + 'M' }, grid: GRID_STYLE },
+        y: { ticks: { ...TICK_STYLE }, grid: { display: false } }
       }
     }
   });
@@ -1190,25 +1212,18 @@ FILTER_IDS.forEach(id => {
   });
 });
 
-document.getElementById('f-term').addEventListener('input', function() {
-  document.getElementById('f-term-lbl').textContent = this.value === '2025' ? '2025+' : this.value + '+';
-  updateFilterOptions();
-  renderDashboard();
-});
-
-document.getElementById('reset-btn').addEventListener('click', () => {
+function doReset() {
   FILTER_IDS.forEach(id => {
     const sel = document.getElementById(id);
     Array.from(sel.options).forEach(o => o.selected = o.value === '__all__');
   });
-  document.getElementById('f-term').value = 2025;
-  document.getElementById('f-term-lbl').textContent = '2025+';
   sortCol = null; sortDir = 1;
   document.querySelectorAll('#tbl-head th').forEach(t => t.classList.remove('asc','desc'));
-  // Restore all options to full universe before re-rendering
   buildFilters();
   renderDashboard();
-});
+}
+document.getElementById('reset-btn').addEventListener('click', doReset);
+document.getElementById('reset-btn-top').addEventListener('click', doReset);
 
 // ═══════════════════════════════════════════════════════════
 // INIT + REFRESH
