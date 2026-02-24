@@ -199,14 +199,75 @@ header {
 .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; }
 .row1 { margin-bottom: 18px; }
 
+/* ── DRAGGABLE CHART GRID ── */
+#chart-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+#chart-grid .chart-slot {
+  min-width: 0; /* prevent grid blowout */
+}
+#chart-grid .chart-slot.slot-wide {
+  grid-column: span 2;
+}
+#chart-grid .chart-slot.slot-hidden {
+  display: none;
+}
+.chart-slot .card {
+  cursor: grab; user-select: none;
+  transition: box-shadow 0.15s, opacity 0.15s;
+}
+.chart-slot .card:active { cursor: grabbing; }
+.chart-slot.dragging { opacity: 0.4; }
+.chart-slot.drag-over .card {
+  box-shadow: 0 0 0 2px var(--wine), var(--shadow-md);
+}
+/* drag handle in card-head */
+.drag-handle {
+  color: var(--border); font-size: 14px; cursor: grab;
+  padding: 0 6px 0 0; line-height: 1;
+  transition: color 0.15s;
+}
+.drag-handle:hover { color: var(--dust); }
+
+/* ── SIDEBAR CHART VISIBILITY ── */
+.sidebar-section-head {
+  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--dust); margin: 14px 0 8px;
+  border-top: 1px solid var(--border); padding-top: 12px;
+}
+.vis-btn {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; background: var(--cream);
+  border: 1px solid var(--border); color: var(--ink);
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  padding: 5px 9px; border-radius: 3px; cursor: pointer;
+  margin-bottom: 5px; text-align: left;
+  transition: all 0.15s;
+}
+.vis-btn:hover { border-color: var(--wine-muted); color: var(--wine); }
+.vis-btn.hidden-chart {
+  background: var(--parchment2); color: var(--dust);
+  text-decoration: line-through; border-style: dashed;
+}
+.vis-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--sage); flex-shrink: 0; transition: background 0.15s;
+}
+.vis-btn.hidden-chart .vis-dot { background: var(--border); }
+
 .card {
   background: white; border: 1px solid var(--border);
   border-radius: 3px; box-shadow: var(--shadow-sm); overflow: hidden;
 }
 .card-head {
-  padding: 12px 16px 9px; border-bottom: 1px solid var(--border);
+  padding: 10px 14px 8px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
 }
+.card-head .card-title { flex: 1; min-width: 0; }
 .card-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: 14px; font-weight: 500; color: var(--ink); letter-spacing: 0.02em;
@@ -331,6 +392,16 @@ footer {
   <aside class="sidebar">
     <div class="sidebar-head">Filters</div>
 
+    <div class="sidebar-section-head" style="margin-top:0;border-top:none;padding-top:0;">Charts</div>
+    <button class="vis-btn" id="vis-ava"   onclick="toggleChart('ava')">  <span class="vis-dot"></span>Revenue by AVA</button>
+    <button class="vis-btn" id="vis-donut" onclick="toggleChart('donut')"><span class="vis-dot"></span>Tonnage by Status</button>
+    <button class="vis-btn" id="vis-prog"  onclick="toggleChart('prog')"> <span class="vis-dot"></span>% Sold by Vineyard</button>
+    <button class="vis-btn" id="vis-ppt"   onclick="toggleChart('ppt')">  <span class="vis-dot"></span>$/Ton by Vineyard</button>
+    <button class="vis-btn" id="vis-var"   onclick="toggleChart('var')">  <span class="vis-dot"></span>Revenue by Varietal</button>
+    <button class="vis-btn" id="vis-term"  onclick="toggleChart('term')"> <span class="vis-dot"></span>Contract Term</button>
+    <button class="vis-btn" id="vis-cust"  onclick="toggleChart('cust')"> <span class="vis-dot"></span>Revenue by Customer</button>
+
+    <div class="sidebar-section-head">Filters</div>
     <button class="reset-btn" id="reset-btn-top" style="margin-bottom:14px;">↺ Reset All Filters</button>
 
     <div class="fg">
@@ -401,103 +472,119 @@ footer {
       </div>
     </div>
 
-    <!-- ROW 1: Revenue by AVA + Status Donut -->
-    <div class="row2">
-      <div class="card" id="card-ava-rev">
-        <div class="card-head">
-          <div class="card-title" id="ava-rev-title">Revenue by AVA</div>
-          <div class="toggle-wrap">
-            <button class="tog active" id="tog-ava-rev" onclick="setToggle('ava','rev')">Revenue</button>
-            <button class="tog"        id="tog-ava-tons" onclick="setToggle('ava','tons')">Tons</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="chart-h-ava"><canvas id="c-ava-rev"></canvas></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title" id="donut-title">Tonnage by Status</div>
-          <div class="toggle-wrap">
-            <button class="tog active" id="tog-donut-tons" onclick="setToggle('donut','tons')">Tons</button>
-            <button class="tog"        id="tog-donut-acres" onclick="setToggle('donut','acres')">Acres</button>
-          </div>
-        </div>
-        <div class="card-body" style="display:flex;align-items:center;justify-content:center;">
-          <div class="chart-std" style="width:100%;"><canvas id="c-status-donut"></canvas></div>
-        </div>
-      </div>
-    </div>
+    <!-- DRAGGABLE CHART GRID -->
+    <div id="chart-grid">
 
-    <!-- ROW 2: % Sold + $/ton by Vineyard -->
-    <div class="row2 row2-linked" id="row2-wrap">
-      <div class="card" id="card-prog">
-        <div class="card-head">
-          <div class="card-title">% Sold by Vineyard</div>
-          <div class="card-badge">Sorted Most → Least</div>
-        </div>
-        <div class="card-body">
-          <div class="prog-list" id="prog-vineyard"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title" id="ppt-title">Wtd. Avg $/Ton by Vineyard</div>
-          <div class="toggle-wrap">
-            <button class="tog active" id="tog-ppt-ppt"   onclick="setToggle('ppt','ppt')">$/Ton</button>
-            <button class="tog"        id="tog-ppt-acres" onclick="setToggle('ppt','acres')">Acres</button>
+      <div class="chart-slot" id="slot-ava" draggable="true">
+        <div class="card" id="card-ava-rev">
+          <div class="card-head">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div class="card-title" id="ava-rev-title">Revenue by AVA</div>
+            <div class="toggle-wrap">
+              <button class="tog active" id="tog-ava-rev"  onclick="setToggle('ava','rev')">Revenue</button>
+              <button class="tog"        id="tog-ava-tons" onclick="setToggle('ava','tons')">Tons</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-h-ava"><canvas id="c-ava-rev"></canvas></div>
           </div>
         </div>
-        <div class="card-body">
-          <div class="chart-h-ppt"><canvas id="c-ppt-vineyard"></canvas></div>
-        </div>
       </div>
-    </div>
 
-    <!-- ROW 3: Revenue by Varietal + Revenue by Contract Term -->
-    <div class="row2">
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title" id="var-title">Revenue by Varietal</div>
-          <div class="toggle-wrap">
-            <button class="tog active" id="tog-var-rev"  onclick="setToggle('var','rev')">Revenue</button>
-            <button class="tog"        id="tog-var-tons" onclick="setToggle('var','tons')">Tons</button>
+      <div class="chart-slot" id="slot-donut" draggable="true">
+        <div class="card">
+          <div class="card-head">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div class="card-title" id="donut-title">Tonnage by Status</div>
+            <div class="toggle-wrap">
+              <button class="tog active" id="tog-donut-tons"  onclick="setToggle('donut','tons')">Tons</button>
+              <button class="tog"        id="tog-donut-acres" onclick="setToggle('donut','acres')">Acres</button>
+            </div>
+          </div>
+          <div class="card-body" style="display:flex;align-items:center;justify-content:center;">
+            <div class="chart-std" style="width:100%;"><canvas id="c-status-donut"></canvas></div>
           </div>
         </div>
-        <div class="card-body">
-          <div class="chart-std"><canvas id="c-var-rev"></canvas></div>
-        </div>
       </div>
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title" id="term-title">Revenue by Remaining Contract Term</div>
-          <div class="toggle-wrap">
-            <button class="tog active" id="tog-term-rev"  onclick="setToggle('term','rev')">Revenue</button>
-            <button class="tog"        id="tog-term-tons" onclick="setToggle('term','tons')">Tons</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="chart-std"><canvas id="c-term-rev"></canvas></div>
-        </div>
-      </div>
-    </div>
 
-    <!-- ROW 3b: Revenue by Customer -->
-    <div class="row2">
-      <div class="card">
-        <div class="card-head">
-          <div class="card-title" id="cust-title">Revenue by Customer</div>
-          <div class="toggle-wrap">
-            <button class="tog active" id="tog-cust-rev"  onclick="setToggle('cust','rev')">Revenue</button>
-            <button class="tog"        id="tog-cust-tons" onclick="setToggle('cust','tons')">Tons</button>
+      <div class="chart-slot" id="slot-prog" draggable="true">
+        <div class="card" id="card-prog">
+          <div class="card-head">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div class="card-title">% Sold by Vineyard</div>
+            <div class="card-badge">Sorted Most → Least</div>
+          </div>
+          <div class="card-body">
+            <div class="prog-list" id="prog-vineyard"></div>
           </div>
         </div>
-        <div class="card-body">
-          <div class="rev-list" id="rev-customer"></div>
+      </div>
+
+      <div class="chart-slot" id="slot-ppt" draggable="true">
+        <div class="card">
+          <div class="card-head">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div class="card-title" id="ppt-title">Wtd. Avg $/Ton by Vineyard</div>
+            <div class="toggle-wrap">
+              <button class="tog active" id="tog-ppt-ppt"  onclick="setToggle('ppt','ppt')">$/Ton</button>
+              <button class="tog"        id="tog-ppt-acre" onclick="setToggle('ppt','acre')">$/Acre</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-h-ppt"><canvas id="c-ppt-vineyard"></canvas></div>
+          </div>
         </div>
       </div>
-      <div class="card" style="visibility:hidden;"></div>
-    </div>
+
+      <div class="chart-slot" id="slot-var" draggable="true">
+        <div class="card">
+          <div class="card-head">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div class="card-title" id="var-title">Revenue by Varietal</div>
+            <div class="toggle-wrap">
+              <button class="tog active" id="tog-var-rev"  onclick="setToggle('var','rev')">Revenue</button>
+              <button class="tog"        id="tog-var-tons" onclick="setToggle('var','tons')">Tons</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-std"><canvas id="c-var-rev"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-slot" id="slot-term" draggable="true">
+        <div class="card">
+          <div class="card-head">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div class="card-title" id="term-title">Revenue by Remaining Contract Term</div>
+            <div class="toggle-wrap">
+              <button class="tog active" id="tog-term-rev"  onclick="setToggle('term','rev')">Revenue</button>
+              <button class="tog"        id="tog-term-tons" onclick="setToggle('term','tons')">Tons</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-std"><canvas id="c-term-rev"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-slot" id="slot-cust" draggable="true">
+        <div class="card">
+          <div class="card-head">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <div class="card-title" id="cust-title">Revenue by Customer</div>
+            <div class="toggle-wrap">
+              <button class="tog active" id="tog-cust-rev"  onclick="setToggle('cust','rev')">Revenue</button>
+              <button class="tog"        id="tog-cust-tons" onclick="setToggle('cust','tons')">Tons</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="rev-list" id="rev-customer"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#chart-grid -->
 
     <!-- ROW 4: Detail Table -->
     <div class="row1">
@@ -980,7 +1067,7 @@ function fmtN(n)  { return Math.round(n).toLocaleString(); }
 const TOGGLES = {
   donut: 'tons',   // tons | acres
   ava:   'rev',    // rev  | tons
-  ppt:   'ppt',    // ppt  | acres
+  ppt:   'ppt',    // ppt  | acre
   var:   'rev',    // rev  | tons
   term:  'rev',    // rev  | tons
   cust:  'rev',    // rev  | tons
@@ -988,11 +1075,88 @@ const TOGGLES = {
 
 function setToggle(chart, val) {
   TOGGLES[chart] = val;
-  // Update button active states
   document.querySelectorAll(`[id^="tog-${chart}-"]`).forEach(btn => {
     btn.classList.toggle('active', btn.id === `tog-${chart}-${val}`);
   });
   renderDashboard();
+}
+
+// ── CHART VISIBILITY ──────────────────────────────────────
+const CHART_VISIBLE = {
+  ava: true, donut: true, prog: true, ppt: true,
+  var: true, term: true, cust: true
+};
+
+function toggleChart(id) {
+  CHART_VISIBLE[id] = !CHART_VISIBLE[id];
+  const slot = document.getElementById('slot-' + id);
+  const btn  = document.getElementById('vis-' + id);
+  if (slot) slot.classList.toggle('slot-hidden', !CHART_VISIBLE[id]);
+  if (btn)  btn.classList.toggle('hidden-chart', !CHART_VISIBLE[id]);
+  // After hiding/showing, resize remaining charts
+  setTimeout(renderDashboard, 50);
+}
+
+// ── DRAG AND DROP ─────────────────────────────────────────
+let dragSrc = null;
+
+function initDragDrop() {
+  const grid = document.getElementById('chart-grid');
+  if (!grid) return;
+
+  grid.addEventListener('dragstart', e => {
+    const slot = e.target.closest('.chart-slot');
+    if (!slot) return;
+    // Don't start drag if clicking toggle buttons
+    if (e.target.closest('.tog, .toggle-wrap, select, button:not(.drag-handle)')) {
+      e.preventDefault(); return;
+    }
+    dragSrc = slot;
+    slot.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', slot.id);
+  });
+
+  grid.addEventListener('dragend', e => {
+    const slot = e.target.closest('.chart-slot');
+    if (slot) slot.classList.remove('dragging');
+    document.querySelectorAll('.chart-slot.drag-over').forEach(s => s.classList.remove('drag-over'));
+    dragSrc = null;
+  });
+
+  grid.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const target = e.target.closest('.chart-slot');
+    if (!target || target === dragSrc) return;
+    document.querySelectorAll('.chart-slot.drag-over').forEach(s => s.classList.remove('drag-over'));
+    target.classList.add('drag-over');
+  });
+
+  grid.addEventListener('dragleave', e => {
+    const target = e.target.closest('.chart-slot');
+    if (target) target.classList.remove('drag-over');
+  });
+
+  grid.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('.chart-slot');
+    if (!target || !dragSrc || target === dragSrc) return;
+    target.classList.remove('drag-over');
+
+    // Determine insertion point
+    const slots  = [...grid.querySelectorAll('.chart-slot')];
+    const srcIdx = slots.indexOf(dragSrc);
+    const tgtIdx = slots.indexOf(target);
+
+    if (srcIdx < tgtIdx) {
+      target.after(dragSrc);
+    } else {
+      target.before(dragSrc);
+    }
+    // Redraw charts to fix canvas sizing after reflow
+    setTimeout(renderDashboard, 50);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1125,9 +1289,9 @@ function renderDashboard() {
     </div>`).join('');
 
   // ── Chart 4: $/Ton or Acres by Vineyard, axis uses vinCode ──
-  const pptMode = TOGGLES.ppt; // 'ppt' or 'acres'
+  const pptMode = TOGGLES.ppt; // 'ppt' or 'acre'
   document.getElementById('ppt-title').textContent =
-    pptMode === 'ppt' ? 'Wtd. Avg $/Ton by Vineyard' : 'Acres by Vineyard';
+    pptMode === 'ppt' ? 'Wtd. Avg $/Ton by Vineyard' : 'Wtd. Avg $/Acre by Vineyard';
   const vinAgg = data.reduce((acc,d) => {
     if (!acc[d.vineyard]) acc[d.vineyard] = {rev:0, tons:0, acres:0, ava:d.ava, code:d.vinCode};
     acc[d.vineyard].rev   += d.revenue;
@@ -1139,7 +1303,7 @@ function renderDashboard() {
     .map(([name,v]) => ({
       name,
       code: v.code || name.slice(0,3).toUpperCase(),
-      val: pptMode==='ppt' ? (v.tons>0 ? v.rev/v.tons : 0) : v.acres,
+      val: pptMode==='ppt' ? (v.tons>0 ? v.rev/v.tons : 0) : (v.acres>0 ? v.rev/v.acres : 0),
       ava: v.ava
     }))
     .filter(v => v.val > 0)
@@ -1170,7 +1334,7 @@ function renderDashboard() {
         tooltip:{callbacks:{
           label: ctx => pptMode==='ppt'
             ? ` $${fmtN(ctx.raw)}/T`
-            : ` ${fmtN(ctx.raw)} acres`,
+            : ` $${fmtN(ctx.raw)}/ac`,
           title: ([ctx]) => vinPPT[ctx.dataIndex].name,
           afterLabel: ctx => ` AVA: ${vinPPT[ctx.dataIndex].ava}`
         }}
@@ -1178,7 +1342,7 @@ function renderDashboard() {
       scales:{
         x:{ticks:{...TICK_STYLE, maxRotation:40, font:{family:FONT,size:9}},grid:{display:false}},
         y:{ticks:{...TICK_STYLE,
-          callback: v => pptMode==='ppt' ? '$'+fmtN(v) : fmtN(v)
+          callback: v => '$'+fmtN(v)
         }, grid:GRID_STYLE}
       }
     }
@@ -1399,6 +1563,7 @@ async function loadData() {
     setProgress(90, 'Building dashboard…');
     buildFilters();
     renderDashboard();
+    initDragDrop();
 
     const now = new Date();
     document.getElementById('sync-time').textContent =
