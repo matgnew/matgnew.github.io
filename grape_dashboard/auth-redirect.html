@@ -1,28 +1,18 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Authenticating…</title>
-  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
-</head>
+<head><title>auth</title></head>
 <body>
-<script>
-  // This page exists solely to handle the MSAL popup redirect.
-  // It must be hosted at the same domain as the dashboard.
-  // Register THIS page's URL as the Redirect URI in Azure Portal
-  // (Authentication → Single-page application).
-  const msalInstance = new msal.PublicClientApplication({
-    auth: {
-      clientId: 'fc35ee5d-55f7-4dc1-949b-31f2107d22f9',
-      authority: 'https://login.microsoftonline.com/19da0551-2cc9-4f4f-965b-abe6ce057e39',
-      redirectUri: window.location.href
-    }
-  });
-  msalInstance.initialize().then(() => {
-    msalInstance.handleRedirectPromise().then(() => {
-      // Popup will close itself automatically after this resolves
-      window.close();
-    });
-  });
-</script>
+<!--
+  MSAL popup redirect handler.
+  This page must be hosted at the same domain as the dashboard.
+  Its URL must be registered as the Redirect URI in Azure Portal
+  (App Registration → Authentication → Single-page application).
+
+  No script needed here. MSAL's loginPopup() in the parent window
+  monitors the popup's URL. The moment the popup lands on this
+  registered redirect URI (with the auth code in the URL hash),
+  MSAL intercepts it, extracts the token, resolves the promise,
+  and closes the popup automatically.
+-->
 </body>
 </html>

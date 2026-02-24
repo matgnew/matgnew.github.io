@@ -554,30 +554,43 @@ function hideOverlay() {
 async function getToken() {
   await msalInstance.initialize();
 
-  // If this page is the auth-redirect page being loaded inside a popup,
-  // just handle the response and stop — don't try to authenticate again.
-  if (window.location.pathname.endsWith('auth-redirect.html')) return null;
-
+  // --- Silent token attempt (uses cached session, no popup) ---
   const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
     try {
       const result = await msalInstance.acquireTokenSilent({
         scopes: SCOPES,
         account: accounts[0],
-        redirectUri: REDIRECT_URI   // must match Azure registration
+        redirectUri: REDIRECT_URI
       });
       return result.accessToken;
-    } catch (e) {
-      // Silent failed — fall through to popup
+    } catch (silentErr) {
+      console.log('Silent token failed, falling back to popup:', silentErr.errorCode);
     }
   }
 
-  // Interactive popup — redirect URI points to auth-redirect.html, not this page
-  const result = await msalInstance.loginPopup({
-    scopes: SCOPES,
-    redirectUri: REDIRECT_URI
-  });
-  return result.accessToken;
+  // --- Interactive popup ---
+  // loginPopup opens a real Microsoft login window. When the user
+  // authenticates, Microsoft redirects the popup to REDIRECT_URI
+  // (auth-redirect.html). MSAL detects that the popup URL matches
+  // the registered redirect URI, extracts the auth code from the
+  // URL hash, exchanges it for a token, resolves the promise here,
+  // and closes the popup. auth-redirect.html needs no script at all.
+  try {
+    const result = await msalInstance.loginPopup({
+      scopes: SCOPES,
+      redirectUri: REDIRECT_URI,
+      prompt: 'select_account'
+    });
+    return result.accessToken;
+  } catch (popupErr) {
+    // If popup was blocked or closed by user
+    throw new Error(
+      'Login popup was blocked or closed. ' +
+      'Please allow popups for this site and try again. (' +
+      popupErr.errorCode + ')'
+    );
+  }
 }
 
 async function fetchSheetData(token) {
