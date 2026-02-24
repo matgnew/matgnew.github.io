@@ -124,9 +124,10 @@ header {
   background: var(--parchment);
   border-right: 1px solid var(--border);
   padding: 20px 16px;
-  overflow-y: auto;
+  overflow-y: hidden;
   height: calc(100vh - 79px);
   position: sticky; top: 79px;
+  display: flex; flex-direction: column;
 }
 .sidebar-head {
   font-family: 'Cormorant Garamond', serif;
@@ -135,12 +136,57 @@ header {
   border-bottom: 1px solid var(--border);
   padding-bottom: 10px; margin-bottom: 16px;
   display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
 }
 .filter-count {
   font-family: 'DM Mono', monospace;
   font-size: 9px; background: var(--wine);
   color: white; padding: 2px 7px; border-radius: 10px;
 }
+/* ── SUB-FILTER COLLAPSIBLES ── */
+.sf-head {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+  padding: 5px 0 5px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0;
+}
+.sf-head:hover .sf-label { color: var(--wine); }
+.sf-label {
+  font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--dust);
+  transition: color 0.15s;
+}
+.sf-arrow {
+  font-size: 8px; color: var(--dust);
+  transition: transform 0.18s; display: inline-block;
+}
+.sf-arrow.open { transform: rotate(180deg); }
+.sf-body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+}
+.sf-body.open {
+  max-height: 2000px; /* JS resizeSelect controls select height */
+  opacity: 1;
+}
+.sf-body select[multiple] {
+  width: 100%; background: var(--cream);
+  border: 1px solid var(--border); border-top: none; color: var(--ink);
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  padding: 3px; cursor: pointer;
+  border-radius: 0 0 3px 3px;
+  /* Height set by JS to fit options or available space */
+  min-height: 36px;
+  display: block;
+}
+.sf-body select[multiple]:focus { outline: none; border-color: var(--wine); }
+.sf-body select[multiple] option { padding: 3px 5px; border-radius: 2px; font-size: 10px; }
+.sf-body select[multiple] option:checked { background: var(--wine); color: white; }
+
+/* keep .fg working for any remaining non-sub-filter use */
 .fg { margin-bottom: 14px; }
 .fg label {
   display: block; font-size: 9px; letter-spacing: 0.18em;
@@ -260,6 +306,7 @@ header {
 .collapsible-head {
   display: flex; align-items: center; justify-content: space-between;
   cursor: pointer; user-select: none;
+  flex-shrink: 0;
 }
 .collapsible-head:hover .collapse-arrow { color: var(--wine); }
 .collapse-arrow {
@@ -267,15 +314,34 @@ header {
   transition: transform 0.2s; display: inline-block;
 }
 .collapse-arrow.open { transform: rotate(180deg); }
+
+/* Default: all collapsible bodies closed */
 .collapsible-body {
   overflow: hidden;
-  max-height: 1200px;
-  transition: max-height 0.3s ease, opacity 0.2s ease;
-  opacity: 1;
-}
-.collapsible-body.collapsed {
-  max-height: 0 !important;
+  max-height: 0;
   opacity: 0;
+  flex-shrink: 0;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+}
+/* Charts section: fixed max-height cap so filters can use remaining space */
+#section-charts.open {
+  max-height: 260px;           /* 7 buttons at ~32px + spacing */
+  opacity: 1;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+/* Filters section: grows to fill all remaining sidebar height */
+#section-filters.open {
+  flex: 1;
+  max-height: none !important; /* override .collapsible-body */
+  opacity: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+/* sub-filter bodies scroll within the filters section */
+.sf-body.open {
+  flex-shrink: 0;
 }
 
 /* ── SIDEBAR CHART VISIBILITY ── */
@@ -283,6 +349,7 @@ header {
   font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--dust); margin: 14px 0 8px;
   border-top: 1px solid var(--border); padding-top: 12px;
+  flex-shrink: 0;
 }
 .vis-btn {
   display: flex; align-items: center; gap: 7px;
@@ -329,7 +396,7 @@ header {
 .chart-h300 { position: relative; height: 300px; }
 
 /* ── PROGRESS BARS ── */
-.prog-list { display: flex; flex-direction: column; gap: 9px; max-height: 320px; overflow-y: auto; }
+.prog-list { display: flex; flex-direction: column; gap: 9px; max-height: 320px; overflow-y: auto; padding-right: 14px; }
 .prog-item {}
 .prog-meta { display: flex; justify-content: space-between; margin-bottom: 3px; }
 .prog-name { font-size: 10px; color: var(--ink); }
@@ -389,6 +456,7 @@ td.r { text-align: right; font-variant-numeric: tabular-nums; }
 .rev-list {
   display: flex; flex-direction: column; gap: 9px;
   max-height: 260px; overflow-y: auto;
+  padding-right: 14px;
 }
 .rev-item {}
 .rev-meta { display: flex; justify-content: space-between; margin-bottom: 3px; }
@@ -434,13 +502,13 @@ footer {
 
 <div class="app-body">
 
-  <!-- SIDEBAR FILTERS -->
-  <aside class="sidebar">
-    <div class="sidebar-head">Filters</div>
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">Customize</div>
 
-    <!-- Collapsible: Charts -->
-    <div class="sidebar-section-head collapsible-head" onclick="toggleSection('charts')" style="margin-top:0;border-top:none;padding-top:0;">
-      <span>Charts</span><span class="collapse-arrow open" id="arrow-charts">▲</span>
+    <!-- Collapsible: Charts (collapsed by default) -->
+    <div class="sidebar-section-head collapsible-head" onclick="toggleSection('charts')" style="border-top:none;padding-top:0;margin-top:0;">
+      <span>Charts</span><span class="collapse-arrow" id="arrow-charts">▲</span>
     </div>
     <div class="collapsible-body" id="section-charts">
       <button class="vis-btn" id="vis-ava"   onclick="toggleChart('ava')">  <span class="vis-dot"></span>Revenue by AVA</button>
@@ -452,47 +520,86 @@ footer {
       <button class="vis-btn" id="vis-cust"  onclick="toggleChart('cust')"> <span class="vis-dot"></span>Revenue by Customer</button>
     </div>
 
-    <!-- Collapsible: Filters -->
+    <!-- Collapsible: Filters (collapsed by default) -->
     <div class="sidebar-section-head collapsible-head" onclick="toggleSection('filters')">
-      <span>Filters</span><span class="collapse-arrow open" id="arrow-filters">▲</span>
+      <span>Filters</span><span class="collapse-arrow" id="arrow-filters">▲</span>
     </div>
     <div class="collapsible-body" id="section-filters">
-      <button class="reset-btn" id="reset-btn-top" style="margin-bottom:14px;">↺ Reset All Filters</button>
+      <button class="reset-btn" id="reset-btn-top" style="margin:10px 0 10px;">↺ Reset All Filters</button>
 
-      <div class="fg">
-        <label>Owner</label>
+      <!-- Sub-filter: Owner -->
+      <div class="sf-head" onclick="toggleSubFilter('owner')">
+        <span class="sf-label">Owner</span>
+        <span class="sf-arrow" id="sf-arrow-owner">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-owner">
         <select id="f-owner" multiple><option value="__all__" selected>All Owners</option></select>
       </div>
-      <div class="fg">
-        <label>Status</label>
+
+      <!-- Sub-filter: Status -->
+      <div class="sf-head" onclick="toggleSubFilter('status')">
+        <span class="sf-label">Status</span>
+        <span class="sf-arrow" id="sf-arrow-status">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-status">
         <select id="f-status" multiple><option value="__all__" selected>All Statuses</option></select>
       </div>
-      <div class="fg">
-        <label>State</label>
+
+      <!-- Sub-filter: State -->
+      <div class="sf-head" onclick="toggleSubFilter('state')">
+        <span class="sf-label">State</span>
+        <span class="sf-arrow" id="sf-arrow-state">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-state">
         <select id="f-state" multiple><option value="__all__" selected>All States</option></select>
       </div>
-      <div class="fg">
-        <label>County</label>
+
+      <!-- Sub-filter: County -->
+      <div class="sf-head" onclick="toggleSubFilter('county')">
+        <span class="sf-label">County</span>
+        <span class="sf-arrow" id="sf-arrow-county">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-county">
         <select id="f-county" multiple><option value="__all__" selected>All Counties</option></select>
       </div>
-      <div class="fg">
-        <label>AVA</label>
+
+      <!-- Sub-filter: AVA -->
+      <div class="sf-head" onclick="toggleSubFilter('ava')">
+        <span class="sf-label">AVA</span>
+        <span class="sf-arrow" id="sf-arrow-ava">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-ava">
         <select id="f-ava" multiple><option value="__all__" selected>All AVAs</option></select>
       </div>
-      <div class="fg">
-        <label>Vineyard</label>
+
+      <!-- Sub-filter: Vineyard -->
+      <div class="sf-head" onclick="toggleSubFilter('vineyard')">
+        <span class="sf-label">Vineyard</span>
+        <span class="sf-arrow" id="sf-arrow-vineyard">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-vineyard">
         <select id="f-vineyard" multiple><option value="__all__" selected>All Vineyards</option></select>
       </div>
-      <div class="fg">
-        <label>Varietal</label>
+
+      <!-- Sub-filter: Varietal -->
+      <div class="sf-head" onclick="toggleSubFilter('varietal')">
+        <span class="sf-label">Varietal</span>
+        <span class="sf-arrow" id="sf-arrow-varietal">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-varietal">
         <select id="f-varietal" multiple><option value="__all__" selected>All Varietals</option></select>
       </div>
-      <div class="fg">
-        <label>Customer</label>
+
+      <!-- Sub-filter: Customer -->
+      <div class="sf-head" onclick="toggleSubFilter('customer')">
+        <span class="sf-label">Customer</span>
+        <span class="sf-arrow" id="sf-arrow-customer">▲</span>
+      </div>
+      <div class="sf-body" id="sf-body-customer">
         <select id="f-customer" multiple><option value="__all__" selected>All Customers</option></select>
       </div>
 
-      <button class="reset-btn" id="reset-btn">↺ Reset All Filters</button>
+      <button class="reset-btn" id="reset-btn" style="margin-top:14px;">↺ Reset All Filters</button>
     </div>
   </aside>
 
@@ -586,8 +693,9 @@ footer {
               <button class="tog"        id="tog-ppt-acre" onclick="setToggle('ppt','acre')">$/Acre</button>
             </div>
           </div>
-          <div class="card-body">
-            <div class="chart-h-ppt"><canvas id="c-ppt-vineyard"></canvas></div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:0;">
+            <div class="chart-h-ppt" style="flex:1;min-height:0;"><canvas id="c-ppt-vineyard"></canvas></div>
+            <div id="ppt-ava-legend" style="display:flex;flex-wrap:wrap;gap:6px 12px;padding:8px 2px 2px;border-top:1px solid var(--border);margin-top:4px;"></div>
           </div>
         </div>
       </div>
@@ -981,6 +1089,12 @@ function syncSelect(id, validValues, isCustomer) {
 
   // Default to "All" if nothing remains selected
   sel.options[0].selected = !anySelected;
+
+  // If this filter's sub-panel is open, resize it for the new option count
+  const sfName = id.replace('f-', '');
+  if (openSubFilter === sfName) {
+    requestAnimationFrame(() => resizeSelect(sfName));
+  }
 }
 
 // Initial population (first load — no cascading yet)
@@ -1078,12 +1192,12 @@ function getFilteredData() {
 // CHARTS
 // ═══════════════════════════════════════════════════════════
 const STATUS_COLORS = {
-  'Sold':         '#16a34a',
-  'Open':         '#d97706',
-  'Custom Crush': '#3b82f6',
-  'Pending':      '#9333ea',
-  'Mothball':     '#dc2626',
-  'FFC':          '#0891b2',
+  'Sold':         '#3d5c38',   // sage green — in palette
+  'Open':         '#b8881e',   // gold — in palette
+  'Custom Crush': '#4a7c9e',   // muted slate blue — in AVA palette
+  'Pending':      '#7e7060',   // dust — in palette
+  'Mothball':     '#6b1f2a',   // wine — in palette
+  'FFC':          '#8b5e3c',   // warm brown — in AVA palette
 };
 
 // AVA color palette
@@ -1153,14 +1267,113 @@ function toggleChart(id) {
   setTimeout(renderDashboard, 50);
 }
 
-// ── COLLAPSIBLE SECTIONS ──────────────────────────────────
+// ── COLLAPSIBLE TOP SECTIONS ─────────────────────────────
+// Opening one section collapses the other to prevent overflow.
+const TOP_SECTIONS = ['charts', 'filters'];
+
 function toggleSection(id) {
   const body  = document.getElementById('section-' + id);
   const arrow = document.getElementById('arrow-' + id);
   if (!body) return;
-  const isOpen = !body.classList.contains('collapsed');
-  body.classList.toggle('collapsed', isOpen);
-  if (arrow) arrow.classList.toggle('open', !isOpen);
+  const opening = !body.classList.contains('open');
+
+  if (opening) {
+    // Collapse every OTHER top section
+    TOP_SECTIONS.forEach(other => {
+      if (other === id) return;
+      const ob = document.getElementById('section-' + other);
+      const oa = document.getElementById('arrow-' + other);
+      if (ob) ob.classList.remove('open');
+      if (oa) oa.classList.remove('open');
+      // If closing the filters section, also collapse any open sub-filter
+      if (other === 'filters' && openSubFilter) {
+        const pb = document.getElementById('sf-body-' + openSubFilter);
+        const pa = document.getElementById('sf-arrow-' + openSubFilter);
+        if (pb) pb.classList.remove('open');
+        if (pa) pa.classList.remove('open');
+        openSubFilter = null;
+      }
+    });
+    body.classList.add('open');
+    if (arrow) arrow.classList.add('open');
+    // After transition finishes, resize any open sub-filter selects
+    // (charts section may have changed available height)
+    setTimeout(resizeOpenSelects, 340);
+  } else {
+    // Closing this section
+    if (id === 'filters' && openSubFilter) {
+      // Collapse open sub-filter when parent filters section closes
+      const pb = document.getElementById('sf-body-' + openSubFilter);
+      const pa = document.getElementById('sf-arrow-' + openSubFilter);
+      if (pb) pb.classList.remove('open');
+      if (pa) pa.classList.remove('open');
+      openSubFilter = null;
+    }
+    body.classList.remove('open');
+    if (arrow) arrow.classList.remove('open');
+  }
+}
+
+// ── SUB-FILTER ACCORDION ──────────────────────────────────
+// Only one sub-filter open at a time; auto-sizes the <select>
+// to fit all options or available sidebar space.
+let openSubFilter = null;
+
+function toggleSubFilter(name) {
+  const body  = document.getElementById('sf-body-' + name);
+  const arrow = document.getElementById('sf-arrow-' + name);
+  if (!body) return;
+
+  if (openSubFilter && openSubFilter !== name) {
+    // Collapse the previously open sub-filter
+    const pb = document.getElementById('sf-body-' + openSubFilter);
+    const pa = document.getElementById('sf-arrow-' + openSubFilter);
+    if (pb) pb.classList.remove('open');
+    if (pa) pa.classList.remove('open');
+  }
+
+  const opening = !body.classList.contains('open');
+  body.classList.toggle('open', opening);
+  if (arrow) arrow.classList.toggle('open', opening);
+  openSubFilter = opening ? name : null;
+
+  if (opening) {
+    setTimeout(() => resizeSelect(name), 20);
+  }
+}
+
+// Size a <select> to fit all its options (up to available sidebar space).
+// "Available" = remaining height in the filters section below the select.
+function resizeSelect(name) {
+  const sel    = document.getElementById('f-' + name);
+  const body   = document.getElementById('sf-body-' + name);
+  if (!sel || !body) return;
+
+  const optionCount = sel.options.length;
+  const ROW_H = 22; // px per option row
+  const idealH = optionCount * ROW_H + 6; // +6 for padding
+
+  // Use the filters section as the scroll container reference
+  const filtersSection = document.getElementById('section-filters');
+  const sidebar        = document.getElementById('sidebar');
+
+  let available = 200; // fallback
+  if (filtersSection && body) {
+    const fsRect   = filtersSection.getBoundingClientRect();
+    const bodyRect = body.getBoundingClientRect();
+    // Space from top of select body to bottom of filters section
+    // minus buffer for other sub-filter headers below + reset button
+    const subHeadsBelow = 8; // remaining sub-filter headers after this one
+    const buffer = subHeadsBelow * 30 + 50; // ~30px each + reset btn
+    available = Math.max(80, fsRect.bottom - bodyRect.top - buffer);
+  }
+
+  sel.style.height = Math.min(idealH, available) + 'px';
+}
+
+// Re-size the currently open select (called after section transitions)
+function resizeOpenSelects() {
+  if (openSubFilter) resizeSelect(openSubFilter);
 }
 
 // ── DRAG AND DROP ─────────────────────────────────────────
@@ -1399,6 +1612,21 @@ function renderDashboard() {
     }
   });
 
+  // ── AVA Legend for $/Ton chart ──
+  (function() {
+    const legendEl = document.getElementById('ppt-ava-legend');
+    if (!legendEl) return;
+    // Collect unique AVAs present in vinPPT (already filtered/sorted)
+    const seenAvas = [];
+    vinPPT.forEach(v => { if (!seenAvas.includes(v.ava)) seenAvas.push(v.ava); });
+    legendEl.innerHTML = seenAvas.map(ava => {
+      const col = getAvaColor(ava);
+      return `<span style="display:inline-flex;align-items:center;gap:4px;font-family:'DM Mono',monospace;font-size:8px;color:var(--dust);letter-spacing:0.08em;white-space:nowrap;">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${col};flex-shrink:0;"></span>${ava}
+      </span>`;
+    }).join('');
+  })();
+
   // ── Chart 5: Revenue or Tons by Varietal (top 12) ──
   const varMode = TOGGLES.var;
   document.getElementById('var-title').textContent =
@@ -1446,21 +1674,13 @@ function renderDashboard() {
     if (b === 'Open / EG') return 1;
     return parseInt(a) - parseInt(b);
   });
-  const termColors = termLabels.map(l =>
-    l === 'Open / EG' ? '#d97706' :
-    parseInt(l) === 2025 ? '#dc2626' :
-    parseInt(l) === 2026 ? '#b8881e' :
-    parseInt(l) === 2027 ? '#3d5c38' :
-    parseInt(l) === 2028 ? '#3b82f6' :
-    parseInt(l) === 2029 ? '#6b1f2a' : '#7e7060'
-  );
   mkChart('c-term-rev', {
     type: 'bar',
     data: {
       labels: termLabels,
       datasets: [{
         data: termLabels.map(l => termMode==='rev' ? termMap[l]/1e6 : termMap[l]),
-        backgroundColor: termColors, borderRadius: 4,
+        backgroundColor: '#6b1f2acc', borderRadius: 4,
       }]
     },
     options: {
