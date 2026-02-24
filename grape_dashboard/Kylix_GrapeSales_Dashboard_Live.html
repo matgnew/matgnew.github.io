@@ -222,9 +222,18 @@ header {
 
 /* ── KPI ROW ── */
 .kpi-grid {
-  display: grid; grid-template-columns: repeat(5, 1fr);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  grid-template-rows: auto auto;
   gap: 12px; margin-bottom: 22px;
 }
+/* Left three span one row each in col 1-3 */
+.kpi-rev  { grid-column: 1; grid-row: 1 / span 2; }
+.kpi-tons { grid-column: 2; grid-row: 1 / span 2; }
+.kpi-acres{ grid-column: 3; grid-row: 1 / span 2; }
+/* Right two: $/Ton stacked above Tons/Acre in col 4-5 combined */
+.kpi-ppt  { grid-column: 4 / span 2; grid-row: 1; }
+.kpi-tpa  { grid-column: 4 / span 2; grid-row: 2; }
 .kpi {
   background: white; border: 1px solid var(--border);
   border-top: 3px solid var(--wine); border-radius: 3px;
@@ -608,30 +617,30 @@ footer {
 
     <!-- KPIs -->
     <div class="kpi-grid">
-      <div class="kpi">
+      <div class="kpi kpi-rev">
         <div class="kpi-lbl">Gross Revenue</div>
         <div class="kpi-val" id="k-rev">—</div>
         <div class="kpi-sub" id="k-rev-sub">—</div>
       </div>
-      <div class="kpi k-gold">
-        <div class="kpi-lbl">Wtd. Avg $/Ton</div>
-        <div class="kpi-val" id="k-ppt">—</div>
-        <div class="kpi-sub" id="k-ppt-sub">—</div>
-      </div>
-      <div class="kpi k-sage">
+      <div class="kpi k-sage kpi-tons">
         <div class="kpi-lbl">Total Tonnage</div>
         <div class="kpi-val" id="k-tons">—</div>
         <div class="kpi-sub" id="k-tons-sub">—</div>
       </div>
-      <div class="kpi k-wine2">
-        <div class="kpi-lbl">Wtd. Avg Tons/Acre</div>
-        <div class="kpi-val" id="k-tpa">—</div>
-        <div class="kpi-sub" id="k-tpa-sub">—</div>
-      </div>
-      <div class="kpi k-dust">
+      <div class="kpi k-dust kpi-acres">
         <div class="kpi-lbl">Total Acres</div>
         <div class="kpi-val" id="k-acres">—</div>
         <div class="kpi-sub" id="k-acres-sub">—</div>
+      </div>
+      <div class="kpi k-gold kpi-ppt">
+        <div class="kpi-lbl">Wtd. Avg $/Ton</div>
+        <div class="kpi-val" id="k-ppt">—</div>
+        <div class="kpi-sub" id="k-ppt-sub">—</div>
+      </div>
+      <div class="kpi k-wine2 kpi-tpa">
+        <div class="kpi-lbl">Wtd. Avg Tons/Acre</div>
+        <div class="kpi-val" id="k-tpa">—</div>
+        <div class="kpi-sub" id="k-tpa-sub">—</div>
       </div>
     </div>
 
@@ -1342,31 +1351,38 @@ function toggleSubFilter(name) {
   }
 }
 
-// Size a <select> to fit all its options (up to available sidebar space).
-// "Available" = remaining height in the filters section below the select.
+// Size a <select> to fill all available sidebar space below it.
+// Measures from the bottom of the select's sf-body to the sidebar
+// bottom, accounting for all collapsed sf-head rows below + reset btn.
+const SF_ORDER = ['owner','status','state','county','ava','vineyard','varietal','customer'];
+const SF_HEAD_H  = 31;   // px: each collapsed sf-head row
+const RESET_BTN_H = 52;  // px: reset button + its margin-top
+const SIDEBAR_PAD = 20;  // px: sidebar bottom padding
+
 function resizeSelect(name) {
-  const sel    = document.getElementById('f-' + name);
-  const body   = document.getElementById('sf-body-' + name);
+  const sel  = document.getElementById('f-' + name);
+  const body = document.getElementById('sf-body-' + name);
   if (!sel || !body) return;
 
   const optionCount = sel.options.length;
-  const ROW_H = 22; // px per option row
-  const idealH = optionCount * ROW_H + 6; // +6 for padding
+  const ROW_H  = 22;   // px per option row
+  const idealH = optionCount * ROW_H + 6;
 
-  // Use the filters section as the scroll container reference
-  const filtersSection = document.getElementById('section-filters');
-  const sidebar        = document.getElementById('sidebar');
+  // Count how many sf-heads sit BELOW the current open body in DOM order
+  const myIdx      = SF_ORDER.indexOf(name);
+  const headsBelow = myIdx >= 0 ? SF_ORDER.length - 1 - myIdx : 0;
 
-  let available = 200; // fallback
-  if (filtersSection && body) {
-    const fsRect   = filtersSection.getBoundingClientRect();
-    const bodyRect = body.getBoundingClientRect();
-    // Space from top of select body to bottom of filters section
-    // minus buffer for other sub-filter headers below + reset button
-    const subHeadsBelow = 8; // remaining sub-filter headers after this one
-    const buffer = subHeadsBelow * 30 + 50; // ~30px each + reset btn
-    available = Math.max(80, fsRect.bottom - bodyRect.top - buffer);
-  }
+  // Measure: sidebar visible bottom → top of the select body (just opened)
+  const sidebar    = document.getElementById('sidebar');
+  const sidebarBot = sidebar
+    ? sidebar.getBoundingClientRect().top + sidebar.clientHeight
+    : window.innerHeight - 10;
+  const bodyTop    = body.getBoundingClientRect().top;
+
+  // Space from top-of-select-body down to sidebar bottom,
+  // minus the space needed by headers below + reset button + padding
+  const reservedBelow = headsBelow * SF_HEAD_H + RESET_BTN_H + SIDEBAR_PAD;
+  const available = Math.max(60, sidebarBot - bodyTop - reservedBelow);
 
   sel.style.height = Math.min(idealH, available) + 'px';
 }
