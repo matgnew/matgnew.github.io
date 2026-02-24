@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kylix Vineyards — 2026 Grape Sales Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
+<style>
+:root {
+  --ink: #1c1712;
+  --cream: #f6f1e9;
+  --parchment: #ede6d4;
+  --parchment2: #e4dcc8;
+  --wine: #6b1f2a;
+  --wine-light: #9e3545;
+  --wine-muted: #b06070;
+  --gold: #b8881e;
+  --gold-light: #d9aa4a;
+  --gold-pale: #f0dfa0;
+  --sage: #3d5c38;
+  --sage-light: #6a8f62;
+  --dust: #7e7060;
+  --border: rgba(28,23,18,0.1);
+  --shadow-sm: 0 1px 8px rgba(28,23,18,0.07);
+  --shadow-md: 0 3px 20px rgba(28,23,18,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: 'DM Mono', monospace;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── LOADING OVERLAY ── */
+#loading-overlay {
+  position: fixed; inset: 0;
+  background: var(--ink);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.5s ease;
+}
+#loading-overlay.fade-out { opacity: 0; pointer-events: none; }
+.loading-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 42px; font-weight: 300;
+  color: var(--cream); letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.loading-sub {
+  font-size: 10px; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--gold-light);
+  margin-bottom: 48px;
+}
+.loading-bar-wrap {
+  width: 280px; height: 2px;
+  background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden;
+}
+.loading-bar {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--wine-light), var(--gold-light));
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.loading-status {
+  margin-top: 16px; font-size: 10px;
+  color: rgba(255,255,255,0.4); letter-spacing: 0.1em;
+}
+.loading-error {
+  color: #f87171; font-size: 11px; margin-top: 20px;
+  max-width: 360px; text-align: center; line-height: 1.6;
+  display: none;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--ink);
+  padding: 22px 36px 18px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  border-bottom: 3px solid var(--wine);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-left h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px; font-weight: 300;
+  color: var(--cream); letter-spacing: 0.04em; line-height: 1;
+}
+.header-left .subtitle {
+  font-size: 9px; color: var(--gold-light);
+  letter-spacing: 0.22em; text-transform: uppercase; margin-top: 5px;
+}
+.header-right { text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.live-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px; padding: 4px 10px;
+  font-size: 9px; color: rgba(255,255,255,0.5); letter-spacing: 0.1em;
+}
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #4ade80; animation: blink 2.2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.sync-time { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 0.08em; }
+.refresh-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.5); font-family: 'DM Mono', monospace;
+  font-size: 9px; letter-spacing: 0.1em; padding: 4px 10px;
+  border-radius: 3px; cursor: pointer; transition: all 0.2s;
+}
+.refresh-btn:hover { border-color: var(--gold-light); color: var(--gold-light); }
+
+/* ── LAYOUT ── */
+.app-body { display: grid; grid-template-columns: 252px 1fr; min-height: calc(100vh - 79px); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  background: var(--parchment);
+  border-right: 1px solid var(--border);
+  padding: 20px 16px;
+  overflow-y: auto;
+  height: calc(100vh - 79px);
+  position: sticky; top: 79px;
+}
+.sidebar-head {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px; font-weight: 500; color: var(--wine);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px; margin-bottom: 16px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.filter-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px; background: var(--wine);
+  color: white; padding: 2px 7px; border-radius: 10px;
+}
+.fg { margin-bottom: 14px; }
+.fg label {
+  display: block; font-size: 9px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--dust); margin-bottom: 5px;
+}
+.fg select {
+  width: 100%; background: var(--cream);
+  border: 1px solid var(--border); color: var(--ink);
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  padding: 6px 8px; border-radius: 3px; appearance: none; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.fg select:focus { outline: none; border-color: var(--wine); }
+.fg select[multiple] { height: 72px; padding: 3px; }
+.fg select[multiple] option { padding: 3px 5px; border-radius: 2px; font-size: 10px; }
+.fg select[multiple] option:checked { background: var(--wine); color: white; }
+.range-wrap input[type=range] {
+  width: 100%; accent-color: var(--wine); cursor: pointer;
+}
+.range-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--dust); margin-top: 3px; }
+.range-labels span.mid { color: var(--wine); font-weight: 500; }
+.reset-btn {
+  width: 100%; margin-top: 10px; padding: 8px;
+  background: var(--wine); color: var(--cream); border: none;
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  cursor: pointer; border-radius: 3px; transition: background 0.2s;
+}
+.reset-btn:hover { background: var(--wine-light); }
+
+/* ── MAIN CONTENT ── */
+.content { padding: 24px 28px; overflow-y: auto; }
+
+/* ── KPI ROW ── */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 12px; margin-bottom: 22px;
+}
+.kpi {
+  background: white; border: 1px solid var(--border);
+  border-top: 3px solid var(--wine); border-radius: 3px;
+  padding: 14px 16px; box-shadow: var(--shadow-sm);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.kpi.k-gold { border-top-color: var(--gold); }
+.kpi.k-sage { border-top-color: var(--sage); }
+.kpi.k-dust { border-top-color: var(--dust); }
+.kpi.k-wine2 { border-top-color: var(--wine-muted); }
+.kpi-lbl { font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dust); margin-bottom: 8px; }
+.kpi-val { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 500; color: var(--ink); line-height: 1; }
+.kpi-sub { font-size: 9px; color: var(--dust); margin-top: 5px; }
+
+/* ── SECTION GRID ── */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+.row1 { margin-bottom: 18px; }
+
+.card {
+  background: white; border: 1px solid var(--border);
+  border-radius: 3px; box-shadow: var(--shadow-sm); overflow: hidden;
+}
+.card-head {
+  padding: 12px 16px 9px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 14px; font-weight: 500; color: var(--ink); letter-spacing: 0.02em;
+}
+.card-badge {
+  font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--dust); background: var(--parchment);
+  padding: 3px 8px; border-radius: 20px;
+}
+.card-body { padding: 14px 16px; }
+.chart-h200 { position: relative; height: 200px; }
+.chart-h260 { position: relative; height: 260px; }
+.chart-h300 { position: relative; height: 300px; }
+
+/* ── PROGRESS BARS ── */
+.prog-list { display: flex; flex-direction: column; gap: 9px; max-height: 320px; overflow-y: auto; }
+.prog-item {}
+.prog-meta { display: flex; justify-content: space-between; margin-bottom: 3px; }
+.prog-name { font-size: 10px; color: var(--ink); }
+.prog-stat { font-size: 9px; color: var(--dust); }
+.prog-bg { height: 5px; background: var(--parchment); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--wine), var(--wine-light)); transition: width 0.5s ease; }
+
+/* ── TABLE ── */
+.tbl-wrap { overflow-x: auto; max-height: 400px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 10px; }
+thead th {
+  background: var(--ink); color: var(--cream);
+  padding: 8px 10px; text-align: left;
+  font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 400;
+  position: sticky; top: 0; cursor: pointer; white-space: nowrap; user-select: none;
+}
+thead th:hover { background: var(--wine); }
+thead th.asc::after { content: ' ↑'; color: var(--gold-light); }
+thead th.desc::after { content: ' ↓'; color: var(--gold-light); }
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+tbody tr:hover { background: var(--parchment); }
+tbody td { padding: 7px 10px; white-space: nowrap; }
+td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.pill {
+  display: inline-block; padding: 2px 7px; border-radius: 20px;
+  font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 500;
+}
+.p-sold { background: #d1fae5; color: #065f46; }
+.p-open { background: #fef3c7; color: #92400e; }
+.p-cc { background: #dbeafe; color: #1e40af; }
+.p-pending { background: #f3e8ff; color: #6b21a8; }
+.p-mothball { background: #fee2e2; color: #991b1b; }
+
+/* ── FOOTER ── */
+footer {
+  background: var(--parchment2); border-top: 1px solid var(--border);
+  padding: 10px 28px; display: flex; justify-content: space-between;
+  font-size: 9px; color: var(--dust);
+}
+.footer-count { color: var(--wine); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="loading-logo">Kylix Vineyards</div>
+  <div class="loading-sub">2026 Grape Sales Dashboard</div>
+  <div class="loading-bar-wrap"><div class="loading-bar" id="load-bar"></div></div>
+  <div class="loading-status" id="load-status">Connecting to Microsoft 365…</div>
+  <div class="loading-error" id="load-error"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <h1>Grape Sales Dashboard</h1>
+    <div class="subtitle">Kylix Vineyards &nbsp;·&nbsp; 2026 Vintage Season</div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><span class="live-dot"></span>Live · SharePoint</div>
+    <div class="sync-time" id="sync-time">—</div>
+    <button class="refresh-btn" onclick="refreshData()">↺ Refresh</button>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- SIDEBAR FILTERS -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      Filters
+      <span class="filter-count" id="filter-count">—</span>
+    </div>
+
+    <div class="fg">
+      <label>Owner</label>
+      <select id="f-owner" multiple><option value="__all__" selected>All Owners</option></select>
+    </div>
+    <div class="fg">
+      <label>Status</label>
+      <select id="f-status" multiple><option value="__all__" selected>All Statuses</option></select>
+    </div>
+    <div class="fg">
+      <label>State</label>
+      <select id="f-state" multiple><option value="__all__" selected>All States</option></select>
+    </div>
+    <div class="fg">
+      <label>County</label>
+      <select id="f-county" multiple><option value="__all__" selected>All Counties</option></select>
+    </div>
+    <div class="fg">
+      <label>AVA</label>
+      <select id="f-ava" multiple><option value="__all__" selected>All AVAs</option></select>
+    </div>
+    <div class="fg">
+      <label>Vineyard</label>
+      <select id="f-vineyard" multiple><option value="__all__" selected>All Vineyards</option></select>
+    </div>
+    <div class="fg">
+      <label>Varietal</label>
+      <select id="f-varietal" multiple><option value="__all__" selected>All Varietals</option></select>
+    </div>
+    <div class="fg">
+      <label>Customer</label>
+      <select id="f-customer" multiple><option value="__all__" selected>All Customers</option></select>
+    </div>
+    <div class="fg">
+      <label>Remaining Term — Final Year ≥</label>
+      <div class="range-wrap">
+        <input type="range" id="f-term" min="2025" max="2030" value="2025" step="1">
+        <div class="range-labels">
+          <span>2025</span>
+          <span class="mid" id="f-term-lbl">2025+</span>
+          <span>2030+</span>
+        </div>
+      </div>
+    </div>
+
+    <button class="reset-btn" id="reset-btn">↺ Reset All Filters</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="content" id="main-content">
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-lbl">Gross Revenue</div>
+        <div class="kpi-val" id="k-rev">—</div>
+        <div class="kpi-sub" id="k-rev-sub">—</div>
+      </div>
+      <div class="kpi k-gold">
+        <div class="kpi-lbl">Wtd. Avg $/Ton</div>
+        <div class="kpi-val" id="k-ppt">—</div>
+        <div class="kpi-sub" id="k-ppt-sub">—</div>
+      </div>
+      <div class="kpi k-sage">
+        <div class="kpi-lbl">Total Tonnage</div>
+        <div class="kpi-val" id="k-tons">—</div>
+        <div class="kpi-sub" id="k-tons-sub">—</div>
+      </div>
+      <div class="kpi k-dust">
+        <div class="kpi-lbl">Total Acres</div>
+        <div class="kpi-val" id="k-acres">—</div>
+        <div class="kpi-sub" id="k-acres-sub">—</div>
+      </div>
+      <div class="kpi k-wine2">
+        <div class="kpi-lbl">Wtd. Avg Tons/Acre</div>
+        <div class="kpi-val" id="k-tpa">—</div>
+        <div class="kpi-sub" id="k-tpa-sub">—</div>
+      </div>
+    </div>
+
+    <!-- ROW 1: Revenue by AVA + Status Donut -->
+    <div class="row2">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Revenue by AVA</div>
+          <div class="card-badge">Stacked by Status · $M</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-h200"><canvas id="c-ava-rev"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Tonnage by Status</div>
+          <div class="card-badge">Tons · %</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-h200"><canvas id="c-status-donut"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 2: % Sold + $/ton by Vineyard -->
+    <div class="row2">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">% Sold by Vineyard</div>
+          <div class="card-badge">Sorted Most → Least</div>
+        </div>
+        <div class="card-body">
+          <div class="prog-list" id="prog-vineyard"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Wtd. Avg $/Ton by Vineyard</div>
+          <div class="card-badge">Colored by AVA</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-h300"><canvas id="c-ppt-vineyard"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3: Tons by Status + Revenue by Varietal -->
+    <div class="row2">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Tons by Status</div>
+          <div class="card-badge">Gross Tons</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-h200"><canvas id="c-tons-status"></canvas></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Revenue by Varietal</div>
+          <div class="card-badge">Top 12</div>
+        </div>
+        <div class="card-body">
+          <div class="chart-h200"><canvas id="c-var-rev"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 4: Detail Table -->
+    <div class="row1">
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Contract Detail</div>
+          <div class="card-badge" id="tbl-badge">— Records</div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table>
+              <thead id="tbl-head">
+                <tr>
+                  <th data-col="vineyard">Vineyard</th>
+                  <th data-col="varietal">Varietal</th>
+                  <th data-col="owner">Owner</th>
+                  <th data-col="ava">AVA</th>
+                  <th data-col="state">State</th>
+                  <th data-col="county">County</th>
+                  <th data-col="status">Status</th>
+                  <th data-col="customer">Customer</th>
+                  <th data-col="tons" class="r">Tons</th>
+                  <th data-col="ppt" class="r">$/Ton</th>
+                  <th data-col="revenue" class="r">Revenue</th>
+                  <th data-col="acres" class="r">Acres</th>
+                  <th data-col="tpa" class="r">T/Ac</th>
+                  <th data-col="finalYear" class="r">Final Yr</th>
+                </tr>
+              </thead>
+              <tbody id="tbl-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<footer>
+  <span>Grapevine Capital Partners · Kylix Vineyards 2026 Grape Sales Database · SharePoint Live</span>
+  <span>Showing <span class="footer-count" id="footer-count">—</span> records</span>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const TENANT_ID   = '19da0551-2cc9-4f4f-965b-abe6ce057e39';
+const CLIENT_ID   = 'fc35ee5d-55f7-4dc1-949b-31f2107d22f9';
+const DRIVE_ID    = 'b!THdqobnhOESr0NxVFuSL0WZopZ7ho7tPumU34s07K3exJUofRGtKR7P09Tkk-qol';
+const ITEM_ID     = '01W4NDSPSK5XQCK4BKXVCJJHZZREBVITH3';
+const SHEET_NAME  = 'Allocation';
+
+const msalConfig = {
+  auth: {
+    clientId: CLIENT_ID,
+    authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+    redirectUri: window.location.href.split('?')[0].split('#')[0]
+  },
+  cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false }
+};
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+const SCOPES = ['Files.Read', 'Sites.Read.All'];
+
+// ═══════════════════════════════════════════════════════════
+// COLUMN INDICES (0-based) in Allocation tab
+// These will be auto-detected from header row
+// ═══════════════════════════════════════════════════════════
+let COL = {};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let ALL_DATA = [];
+let sortCol = null, sortDir = 1;
+const chartInstances = {};
+
+// ═══════════════════════════════════════════════════════════
+// LOADING UI
+// ═══════════════════════════════════════════════════════════
+function setProgress(pct, msg) {
+  document.getElementById('load-bar').style.width = pct + '%';
+  if (msg) document.getElementById('load-status').textContent = msg;
+}
+function showError(msg) {
+  const el = document.getElementById('load-error');
+  el.textContent = msg; el.style.display = 'block';
+  document.getElementById('load-status').textContent = 'Authentication failed.';
+}
+function hideOverlay() {
+  const ov = document.getElementById('loading-overlay');
+  ov.classList.add('fade-out');
+  setTimeout(() => ov.style.display = 'none', 500);
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH + DATA FETCH
+// ═══════════════════════════════════════════════════════════
+async function getToken() {
+  await msalInstance.initialize();
+  // Handle redirect response first
+  await msalInstance.handleRedirectPromise();
+
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const result = await msalInstance.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      return result.accessToken;
+    } catch (e) { /* fall through to interactive */ }
+  }
+  // Interactive login
+  const result = await msalInstance.loginPopup({ scopes: SCOPES });
+  return result.accessToken;
+}
+
+async function fetchSheetData(token) {
+  // Fetch the used range of the Allocation worksheet
+  const url = `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${ITEM_ID}/workbook/worksheets/${encodeURIComponent(SHEET_NAME)}/usedRange`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Graph API error ${resp.status}: ${err}`);
+  }
+  const json = await resp.json();
+  return json.values; // 2D array
+}
+
+// ═══════════════════════════════════════════════════════════
+// PARSE ROWS
+// ═══════════════════════════════════════════════════════════
+function detectColumns(headerRow) {
+  // Map header text → index, case-insensitive, trimmed
+  const map = {};
+  headerRow.forEach((cell, i) => {
+    if (cell) map[String(cell).trim().toLowerCase()] = i;
+  });
+
+  // Try to find key columns by common header names
+  // Adjust these patterns to match your actual Allocation tab headers
+  COL.owner      = findCol(map, ['owner','entity']);
+  COL.vineyard   = findCol(map, ['vineyard','ranch','sub-vineyard']);
+  COL.varietal   = findCol(map, ['varietal','variety','grape']);
+  COL.status     = findCol(map, ['status']);
+  COL.customer   = findCol(map, ['customer','winery','buyer']);
+  COL.tons       = findCol(map, ['tons','allocated tons','contract tons','est. tons']);
+  COL.ppt        = findCol(map, ['price','$/ton','price per ton','ppt','price/ton']);
+  COL.revenue    = findCol(map, ['revenue','$ revenue','gross revenue']);
+  COL.acres      = findCol(map, ['reference acres','ref acres','ref. acres','reference_acres','referenceacres','acres ref','available acres','total acres','acreage','acres']);
+  COL.tpa        = findCol(map, ['tons/acre','t/a','tpa','yield','tons per acre']);
+  COL.ava        = findCol(map, ['ava','reporting region','region','appellation']);
+  COL.state      = findCol(map, ['state']);
+  COL.county     = findCol(map, ['county']);
+  COL.finalYear  = findCol(map, ['final year','last year','end year','term end','finalyear']);
+  COL.contract   = findCol(map, ['contract','contract record','contract name','contract #']);
+
+  console.log('Detected columns:', COL);
+  console.log('Header row:', headerRow.slice(0, 40));
+  // Explicitly confirm which acres column was picked
+  if (COL.acres !== null) {
+    console.log(`✅ Acres column → index ${COL.acres}: "${headerRow[COL.acres]}"`);
+  } else {
+    console.warn('⚠️ No acres column detected — check header names');
+  }
+}
+
+function findCol(map, candidates) {
+  // Pass 1: exact match against every candidate before trying partials
+  for (const c of candidates) {
+    if (map[c] !== undefined) return map[c];
+  }
+  // Pass 2: partial match — header contains candidate string
+  for (const c of candidates) {
+    for (const k of Object.keys(map)) {
+      if (k.includes(c)) return map[k];
+    }
+  }
+  return null;
+}
+
+function parseRows(values) {
+  if (!values || values.length < 2) throw new Error('No data returned from spreadsheet.');
+
+  const header = values[0];
+  detectColumns(header);
+
+  const data = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+
+    const getV = (idx) => (idx !== null && idx !== undefined) ? row[idx] : null;
+
+    const tonsRaw = parseFloat(getV(COL.tons)) || 0;
+    const acresRaw = parseFloat(getV(COL.acres)) || 0;
+    const pptRaw = parseFloat(getV(COL.ppt)) || 0;
+    const tpa = acresRaw > 0 ? tonsRaw / acresRaw : 0;
+
+    // Skip rows with 0 tons/acre (i.e. blocks with no yield) — but keep Open rows
+    // that may have 0 tons because they haven't been allocated yet
+    // Actually: skip rows where both tons AND acres are 0
+    if (tonsRaw === 0 && acresRaw === 0) continue;
+    // Skip rows that have acres but explicitly 0 tons/acre via column H
+    // Per user: remove blocks with 0 tons in col H (tons column)
+    if (tonsRaw === 0 && acresRaw > 0) {
+      // Only skip if tpa is explicitly 0 — i.e. no allocation at all
+      const tpaCol = getV(COL.tpa);
+      if (tpaCol !== null && parseFloat(tpaCol) === 0) continue;
+    }
+
+    const status = String(getV(COL.status) || '').trim();
+    if (!status) continue; // skip blank rows
+
+    const vineyard = String(getV(COL.vineyard) || '').trim();
+    const varietal = String(getV(COL.varietal) || '').trim();
+    const owner = String(getV(COL.owner) || '').trim();
+    if (!vineyard && !varietal && !owner) continue;
+
+    // Revenue: use spreadsheet value if available, else compute
+    let revenue = 0;
+    if (COL.revenue !== null) {
+      revenue = parseFloat(getV(COL.revenue)) || (tonsRaw * pptRaw);
+    } else {
+      revenue = tonsRaw * pptRaw;
+    }
+
+    // Final year
+    let finalYear = null;
+    const fyRaw = getV(COL.finalYear);
+    if (fyRaw) {
+      const fyNum = parseInt(fyRaw);
+      if (fyNum >= 2020 && fyNum <= 2040) finalYear = fyNum;
+    }
+
+    const ava = String(getV(COL.ava) || '').trim() || 'Unknown';
+    const state = String(getV(COL.state) || '').trim() || 'Unknown';
+    const county = String(getV(COL.county) || '').trim() || 'Unknown';
+    const customer = String(getV(COL.customer) || '').trim() || 'Open';
+
+    data.push({
+      owner, vineyard, varietal, status, customer,
+      tons: tonsRaw, ppt: pptRaw, revenue,
+      acres: acresRaw, tpa,
+      ava, state, county, finalYear,
+      _row: i
+    });
+  }
+
+  return data;
+}
+
+// ═══════════════════════════════════════════════════════════
+// POPULATE FILTER DROPDOWNS
+// ═══════════════════════════════════════════════════════════
+function populateSelect(id, values) {
+  const sel = document.getElementById(id);
+  // Keep "All" option, clear rest
+  while (sel.options.length > 1) sel.remove(1);
+  [...values].sort((a,b) => String(a).localeCompare(String(b))).forEach(v => {
+    if (!v || v === 'Unknown') return;
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    sel.appendChild(opt);
+  });
+}
+
+function buildFilters() {
+  const uniq = (field) => [...new Set(ALL_DATA.map(d => d[field]).filter(Boolean))];
+  populateSelect('f-owner',    uniq('owner'));
+  populateSelect('f-status',   uniq('status'));
+  populateSelect('f-state',    uniq('state'));
+  populateSelect('f-county',   uniq('county'));
+  populateSelect('f-ava',      uniq('ava'));
+  populateSelect('f-vineyard', uniq('vineyard'));
+  populateSelect('f-varietal', uniq('varietal'));
+  // Customers — exclude generic placeholders
+  const customers = [...new Set(ALL_DATA.map(d => d.customer).filter(c =>
+    c && c !== 'Open' && c.toLowerCase() !== 'open' &&
+    c.toLowerCase() !== 'n/a' && c !== ''
+  ))];
+  populateSelect('f-customer', customers);
+}
+
+// ═══════════════════════════════════════════════════════════
+// FILTERING
+// ═══════════════════════════════════════════════════════════
+function getSelected(id) {
+  const sel = document.getElementById(id);
+  const vals = Array.from(sel.selectedOptions).map(o => o.value);
+  if (vals.includes('__all__') || vals.length === 0) return null;
+  return new Set(vals);
+}
+
+function getFilteredData() {
+  const owners    = getSelected('f-owner');
+  const statuses  = getSelected('f-status');
+  const states    = getSelected('f-state');
+  const counties  = getSelected('f-county');
+  const avas      = getSelected('f-ava');
+  const vineyards = getSelected('f-vineyard');
+  const varietals = getSelected('f-varietal');
+  const customers = getSelected('f-customer');
+  const minYear   = parseInt(document.getElementById('f-term').value);
+
+  return ALL_DATA.filter(d => {
+    if (owners    && !owners.has(d.owner))       return false;
+    if (statuses  && !statuses.has(d.status))    return false;
+    if (states    && !states.has(d.state))       return false;
+    if (counties  && !counties.has(d.county))    return false;
+    if (avas      && !avas.has(d.ava))           return false;
+    if (vineyards && !vineyards.has(d.vineyard)) return false;
+    if (varietals && !varietals.has(d.varietal)) return false;
+    if (customers && !customers.has(d.customer)) return false;
+    if (minYear > 2025 && d.finalYear !== null && d.finalYear < minYear) return false;
+    return true;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════════
+const STATUS_COLORS = {
+  'Sold':         '#16a34a',
+  'Open':         '#d97706',
+  'Custom Crush': '#3b82f6',
+  'Pending':      '#9333ea',
+  'Mothball':     '#dc2626',
+  'FFC':          '#0891b2',
+};
+
+// AVA color palette
+const AVA_PALETTE = [
+  '#6b1f2a','#b8881e','#3d5c38','#4a7c9e','#8b5e3c',
+  '#6b3fa0','#2d6a4f','#c45c2e','#1a5276','#7d6b22',
+  '#5c4033','#2e4a26','#8b2252','#1a4a6b','#4a4a1a',
+];
+const avaColorMap = {};
+function getAvaColor(ava) {
+  if (!avaColorMap[ava]) {
+    const idx = Object.keys(avaColorMap).length % AVA_PALETTE.length;
+    avaColorMap[ava] = AVA_PALETTE[idx];
+  }
+  return avaColorMap[ava];
+}
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+function mkChart(id, cfg) {
+  destroyChart(id);
+  chartInstances[id] = new Chart(document.getElementById(id).getContext('2d'), cfg);
+}
+
+const FONT = 'DM Mono';
+const TICK_STYLE = { font: { family: FONT, size: 9 }, color: '#7e7060' };
+const GRID_STYLE = { color: 'rgba(0,0,0,0.04)' };
+
+function fmtM(n)  { return '$' + (n/1e6).toFixed(1) + 'M'; }
+function fmtK(n)  { if(n>=1e6) return '$'+(n/1e6).toFixed(1)+'M'; if(n>=1e3) return '$'+(n/1e3).toFixed(0)+'K'; return '$'+Math.round(n); }
+function fmtN(n)  { return Math.round(n).toLocaleString(); }
+
+// ═══════════════════════════════════════════════════════════
+// DASHBOARD RENDER
+// ═══════════════════════════════════════════════════════════
+function renderDashboard() {
+  const data = getFilteredData();
+
+  // ── KPIs ──
+  const totalRev   = data.reduce((s,d) => s + d.revenue, 0);
+  const totalTons  = data.reduce((s,d) => s + d.tons, 0);
+  const totalAcres = data.reduce((s,d) => s + d.acres, 0);
+  const wtdPPT     = totalTons > 0 ? totalRev / totalTons : 0;
+  const wtdTPA     = totalAcres > 0 ? totalTons / totalAcres : 0;
+
+  const soldRev   = data.filter(d=>d.status==='Sold').reduce((s,d)=>s+d.revenue,0);
+  const soldTons  = data.filter(d=>d.status==='Sold').reduce((s,d)=>s+d.tons,0);
+  const openTons  = data.filter(d=>d.status==='Open').reduce((s,d)=>s+d.tons,0);
+  const ccTons    = data.filter(d=>d.status==='Custom Crush').reduce((s,d)=>s+d.tons,0);
+  const pendTons  = data.filter(d=>d.status==='Pending').reduce((s,d)=>s+d.tons,0);
+
+  document.getElementById('k-rev').textContent     = fmtM(totalRev);
+  document.getElementById('k-rev-sub').textContent = `Sold: ${fmtM(soldRev)}`;
+  document.getElementById('k-ppt').textContent     = '$' + fmtN(wtdPPT);
+  document.getElementById('k-ppt-sub').textContent = `${data.length} records`;
+  document.getElementById('k-tons').textContent    = fmtN(totalTons);
+  document.getElementById('k-tons-sub').textContent= `Sold ${fmtN(soldTons)} · Open ${fmtN(openTons)}`;
+  document.getElementById('k-acres').textContent   = fmtN(totalAcres);
+  document.getElementById('k-acres-sub').textContent = `Filtered acres`;
+  document.getElementById('k-tpa').textContent     = wtdTPA.toFixed(2);
+  document.getElementById('k-tpa-sub').textContent = `Tons per acre`;
+  document.getElementById('filter-count').textContent = fmtN(data.length);
+
+  // ── Chart 1: Revenue by AVA (stacked bar) ──
+  const avas = [...new Set(data.map(d=>d.ava))].sort();
+  const statuses = ['Sold','Open','Custom Crush','Pending'];
+  const avaDatasets = statuses.map(st => ({
+    label: st,
+    data: avas.map(a => data.filter(d=>d.ava===a&&d.status===st).reduce((s,d)=>s+d.revenue,0)/1e6),
+    backgroundColor: STATUS_COLORS[st] || '#aaa',
+    borderRadius: 2,
+  }));
+  mkChart('c-ava-rev', {
+    type: 'bar',
+    data: { labels: avas, datasets: avaDatasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { font:{family:FONT,size:9}, color:'#1c1712', boxWidth:10 } } },
+      scales: {
+        x: { stacked:true, ticks:{...TICK_STYLE,maxRotation:30}, grid:{display:false} },
+        y: { stacked:true, ticks:{...TICK_STYLE, callback:v=>'$'+v.toFixed(0)+'M'}, grid:GRID_STYLE }
+      }
+    }
+  });
+
+  // ── Chart 2: Status Donut (tons) ──
+  const statusTons = {};
+  data.forEach(d => { statusTons[d.status] = (statusTons[d.status]||0) + d.tons; });
+  const statusKeys = Object.keys(statusTons).sort((a,b)=>statusTons[b]-statusTons[a]);
+  mkChart('c-status-donut', {
+    type: 'doughnut',
+    data: {
+      labels: statusKeys,
+      datasets: [{ data: statusKeys.map(s=>statusTons[s]), backgroundColor: statusKeys.map(s=>STATUS_COLORS[s]||'#aaa'), borderWidth:2, borderColor:'#fff' }]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, cutout:'58%',
+      plugins: {
+        legend: { position:'right', labels:{font:{family:FONT,size:9},color:'#1c1712',padding:10,boxWidth:10} },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtN(ctx.raw)}T (${(ctx.raw/totalTons*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+
+  // ── Progress bars: % sold by vineyard, sorted most→least ──
+  const vinMap = {};
+  data.forEach(d => {
+    if (!vinMap[d.vineyard]) vinMap[d.vineyard] = {sold:0,total:0};
+    vinMap[d.vineyard].total += d.tons;
+    if (d.status==='Sold') vinMap[d.vineyard].sold += d.tons;
+  });
+  // Sort by % sold descending, include ALL vineyards
+  const vinList = Object.entries(vinMap)
+    .map(([name,v]) => ({name, pct: v.total>0 ? v.sold/v.total : 0, sold:v.sold, total:v.total}))
+    .sort((a,b) => b.pct-a.pct || b.total-a.total);
+
+  document.getElementById('prog-vineyard').innerHTML = vinList.map(v => `
+    <div class="prog-item">
+      <div class="prog-meta">
+        <span class="prog-name">${v.name}</span>
+        <span class="prog-stat">${(v.pct*100).toFixed(0)}% · ${fmtN(v.sold)}/${fmtN(v.total)}T</span>
+      </div>
+      <div class="prog-bg"><div class="prog-fill" style="width:${v.pct*100}%"></div></div>
+    </div>`).join('');
+
+  // ── Chart 4: $/ton by vineyard, colored by AVA ──
+  const vinPPT = Object.entries(
+    data.reduce((acc,d) => {
+      if (!acc[d.vineyard]) acc[d.vineyard] = {rev:0, tons:0, ava:d.ava};
+      acc[d.vineyard].rev  += d.revenue;
+      acc[d.vineyard].tons += d.tons;
+      return acc;
+    }, {})
+  ).map(([name,v]) => ({name, ppt: v.tons>0 ? v.rev/v.tons : 0, ava: v.ava}))
+   .filter(v => v.ppt > 0)
+   .sort((a,b) => b.ppt - a.ppt);
+
+  mkChart('c-ppt-vineyard', {
+    type: 'bar',
+    data: {
+      labels: vinPPT.map(v=>v.name),
+      datasets: [{
+        data: vinPPT.map(v=>v.ppt),
+        backgroundColor: vinPPT.map(v=>getAvaColor(v.ava)),
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          label: ctx => ` $${fmtN(ctx.raw)}/T`,
+          afterLabel: (ctx) => ` AVA: ${vinPPT[ctx.dataIndex].ava}`
+        }}
+      },
+      scales:{
+        x:{ticks:{...TICK_STYLE,callback:v=>'$'+fmtN(v)},grid:GRID_STYLE},
+        y:{ticks:{...TICK_STYLE},grid:{display:false}}
+      }
+    }
+  });
+
+  // ── Chart 5: Tons by status (bar, include Pending) ──
+  const statusOrder = ['Sold','Open','Custom Crush','Pending','Mothball','FFC'];
+  const statusBars = statusOrder.filter(s => statusTons[s] > 0);
+  mkChart('c-tons-status', {
+    type:'bar',
+    data:{
+      labels: statusBars,
+      datasets:[{
+        data: statusBars.map(s=>statusTons[s]||0),
+        backgroundColor: statusBars.map(s=>STATUS_COLORS[s]||'#aaa'),
+        borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${fmtN(ctx.raw)} T`}}},
+      scales:{
+        x:{ticks:{...TICK_STYLE},grid:{display:false}},
+        y:{ticks:{...TICK_STYLE,callback:v=>fmtN(v)},grid:GRID_STYLE}
+      }
+    }
+  });
+
+  // ── Chart 6: Revenue by varietal (top 12) ──
+  const varRev = Object.entries(
+    data.reduce((acc,d)=>{acc[d.varietal]=(acc[d.varietal]||0)+d.revenue;return acc;},{})
+  ).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  mkChart('c-var-rev', {
+    type:'bar',
+    data:{
+      labels: varRev.map(v=>v[0]),
+      datasets:[{data:varRev.map(v=>v[1]/1e6),backgroundColor:'#6b1f2a99',borderRadius:3}]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` $${ctx.raw.toFixed(1)}M`}}},
+      scales:{
+        x:{ticks:{...TICK_STYLE,maxRotation:38},grid:{display:false}},
+        y:{ticks:{...TICK_STYLE,callback:v=>'$'+v+'M'},grid:GRID_STYLE}
+      }
+    }
+  });
+
+  // ── Detail Table ──
+  const tableData = sortCol
+    ? [...data].sort((a,b)=>{
+        const av=a[sortCol]??'', bv=b[sortCol]??'';
+        return typeof av==='number' ? (av-bv)*sortDir : String(av).localeCompare(String(bv))*sortDir;
+      })
+    : data;
+
+  document.getElementById('tbl-body').innerHTML = tableData.map(d=>`
+    <tr>
+      <td>${d.vineyard}</td>
+      <td>${d.varietal}</td>
+      <td>${d.owner}</td>
+      <td>${d.ava}</td>
+      <td>${d.state}</td>
+      <td>${d.county}</td>
+      <td><span class="pill p-${d.status.toLowerCase().replace(/\s+/g,'-').replace('custom-crush','cc')}">${d.status}</span></td>
+      <td>${d.customer}</td>
+      <td class="r">${fmtN(d.tons)}</td>
+      <td class="r">$${fmtN(d.ppt)}</td>
+      <td class="r">${fmtK(d.revenue)}</td>
+      <td class="r">${fmtN(d.acres)}</td>
+      <td class="r">${d.tpa>0?d.tpa.toFixed(1):'—'}</td>
+      <td class="r">${d.finalYear??'—'}</td>
+    </tr>`).join('');
+
+  document.getElementById('tbl-badge').textContent  = `${fmtN(tableData.length)} Records`;
+  document.getElementById('footer-count').textContent = fmtN(tableData.length);
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABLE SORT
+// ═══════════════════════════════════════════════════════════
+document.getElementById('tbl-head').addEventListener('click', e => {
+  const th = e.target.closest('th');
+  if (!th) return;
+  const col = th.dataset.col;
+  if (sortCol === col) sortDir *= -1; else { sortCol = col; sortDir = 1; }
+  document.querySelectorAll('#tbl-head th').forEach(t => t.classList.remove('asc','desc'));
+  th.classList.add(sortDir===1?'asc':'desc');
+  renderDashboard();
+});
+
+// ═══════════════════════════════════════════════════════════
+// FILTER WIRING
+// ═══════════════════════════════════════════════════════════
+['f-owner','f-status','f-state','f-county','f-ava','f-vineyard','f-varietal','f-customer'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderDashboard);
+});
+document.getElementById('f-term').addEventListener('input', function() {
+  document.getElementById('f-term-lbl').textContent = this.value === '2025' ? '2025+' : this.value + '+';
+  renderDashboard();
+});
+document.getElementById('reset-btn').addEventListener('click', () => {
+  ['f-owner','f-status','f-state','f-county','f-ava','f-vineyard','f-varietal','f-customer'].forEach(id => {
+    const sel = document.getElementById(id);
+    Array.from(sel.options).forEach(o => o.selected = o.value === '__all__');
+  });
+  document.getElementById('f-term').value = 2025;
+  document.getElementById('f-term-lbl').textContent = '2025+';
+  sortCol = null; sortDir = 1;
+  document.querySelectorAll('#tbl-head th').forEach(t => t.classList.remove('asc','desc'));
+  renderDashboard();
+});
+
+// ═══════════════════════════════════════════════════════════
+// INIT + REFRESH
+// ═══════════════════════════════════════════════════════════
+async function loadData() {
+  try {
+    setProgress(10, 'Authenticating with Microsoft 365…');
+    const token = await getToken();
+
+    setProgress(40, 'Fetching Allocation worksheet…');
+    const values = await fetchSheetData(token);
+
+    setProgress(75, `Parsing ${values.length} rows…`);
+    ALL_DATA = parseRows(values);
+
+    setProgress(90, 'Building dashboard…');
+    buildFilters();
+    renderDashboard();
+
+    const now = new Date();
+    document.getElementById('sync-time').textContent =
+      `Synced ${now.toLocaleDateString()} ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+
+    setProgress(100, 'Done');
+    setTimeout(hideOverlay, 400);
+
+  } catch (err) {
+    console.error(err);
+    showError('Error: ' + err.message + '\n\nMake sure this app registration has Files.Read and Sites.Read.All delegated permissions, and that the redirect URI matches this page URL.');
+  }
+}
+
+async function refreshData() {
+  document.getElementById('loading-overlay').style.display = 'flex';
+  document.getElementById('loading-overlay').classList.remove('fade-out');
+  document.getElementById('load-error').style.display = 'none';
+  await loadData();
+}
+
+// Start
+loadData();
+</script>
+</body>
+</html>
