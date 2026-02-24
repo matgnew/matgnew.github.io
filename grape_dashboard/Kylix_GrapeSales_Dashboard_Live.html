@@ -215,10 +215,34 @@ header {
 #chart-grid .chart-slot.slot-hidden {
   display: none;
 }
+
+/* ── UNIFORM CARD HEIGHT ── */
+/* Every chart card is the same total height */
 .chart-slot .card {
   cursor: grab; user-select: none;
   transition: box-shadow 0.15s, opacity 0.15s;
+  height: 360px;        /* total card height = header + body */
+  display: flex;
+  flex-direction: column;
 }
+.chart-slot .card .card-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Chart canvases fill available card body */
+.chart-slot .card .card-body > div[class^="chart-"],
+.chart-slot .card .card-body > div[class*=" chart-"] {
+  flex: 1; height: 100% !important; position: relative;
+}
+/* Progress/revenue lists fill card body and scroll */
+.chart-slot .card .card-body .prog-list,
+.chart-slot .card .card-body .rev-list {
+  flex: 1; max-height: none; overflow-y: auto;
+}
+
 .chart-slot .card:active { cursor: grabbing; }
 .chart-slot.dragging { opacity: 0.4; }
 .chart-slot.drag-over .card {
@@ -231,6 +255,28 @@ header {
   transition: color 0.15s;
 }
 .drag-handle:hover { color: var(--dust); }
+
+/* ── COLLAPSIBLE SIDEBAR SECTIONS ── */
+.collapsible-head {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none;
+}
+.collapsible-head:hover .collapse-arrow { color: var(--wine); }
+.collapse-arrow {
+  font-size: 10px; color: var(--dust);
+  transition: transform 0.2s; display: inline-block;
+}
+.collapse-arrow.open { transform: rotate(180deg); }
+.collapsible-body {
+  overflow: hidden;
+  max-height: 1200px;
+  transition: max-height 0.3s ease, opacity 0.2s ease;
+  opacity: 1;
+}
+.collapsible-body.collapsed {
+  max-height: 0 !important;
+  opacity: 0;
+}
 
 /* ── SIDEBAR CHART VISIBILITY ── */
 .sidebar-section-head {
@@ -392,52 +438,62 @@ footer {
   <aside class="sidebar">
     <div class="sidebar-head">Filters</div>
 
-    <div class="sidebar-section-head" style="margin-top:0;border-top:none;padding-top:0;">Charts</div>
-    <button class="vis-btn" id="vis-ava"   onclick="toggleChart('ava')">  <span class="vis-dot"></span>Revenue by AVA</button>
-    <button class="vis-btn" id="vis-donut" onclick="toggleChart('donut')"><span class="vis-dot"></span>Tonnage by Status</button>
-    <button class="vis-btn" id="vis-prog"  onclick="toggleChart('prog')"> <span class="vis-dot"></span>% Sold by Vineyard</button>
-    <button class="vis-btn" id="vis-ppt"   onclick="toggleChart('ppt')">  <span class="vis-dot"></span>$/Ton by Vineyard</button>
-    <button class="vis-btn" id="vis-var"   onclick="toggleChart('var')">  <span class="vis-dot"></span>Revenue by Varietal</button>
-    <button class="vis-btn" id="vis-term"  onclick="toggleChart('term')"> <span class="vis-dot"></span>Contract Term</button>
-    <button class="vis-btn" id="vis-cust"  onclick="toggleChart('cust')"> <span class="vis-dot"></span>Revenue by Customer</button>
-
-    <div class="sidebar-section-head">Filters</div>
-    <button class="reset-btn" id="reset-btn-top" style="margin-bottom:14px;">↺ Reset All Filters</button>
-
-    <div class="fg">
-      <label>Owner</label>
-      <select id="f-owner" multiple><option value="__all__" selected>All Owners</option></select>
+    <!-- Collapsible: Charts -->
+    <div class="sidebar-section-head collapsible-head" onclick="toggleSection('charts')" style="margin-top:0;border-top:none;padding-top:0;">
+      <span>Charts</span><span class="collapse-arrow open" id="arrow-charts">▲</span>
     </div>
-    <div class="fg">
-      <label>Status</label>
-      <select id="f-status" multiple><option value="__all__" selected>All Statuses</option></select>
-    </div>
-    <div class="fg">
-      <label>State</label>
-      <select id="f-state" multiple><option value="__all__" selected>All States</option></select>
-    </div>
-    <div class="fg">
-      <label>County</label>
-      <select id="f-county" multiple><option value="__all__" selected>All Counties</option></select>
-    </div>
-    <div class="fg">
-      <label>AVA</label>
-      <select id="f-ava" multiple><option value="__all__" selected>All AVAs</option></select>
-    </div>
-    <div class="fg">
-      <label>Vineyard</label>
-      <select id="f-vineyard" multiple><option value="__all__" selected>All Vineyards</option></select>
-    </div>
-    <div class="fg">
-      <label>Varietal</label>
-      <select id="f-varietal" multiple><option value="__all__" selected>All Varietals</option></select>
-    </div>
-    <div class="fg">
-      <label>Customer</label>
-      <select id="f-customer" multiple><option value="__all__" selected>All Customers</option></select>
+    <div class="collapsible-body" id="section-charts">
+      <button class="vis-btn" id="vis-ava"   onclick="toggleChart('ava')">  <span class="vis-dot"></span>Revenue by AVA</button>
+      <button class="vis-btn" id="vis-donut" onclick="toggleChart('donut')"><span class="vis-dot"></span>Tonnage by Status</button>
+      <button class="vis-btn" id="vis-prog"  onclick="toggleChart('prog')"> <span class="vis-dot"></span>% Sold by Vineyard</button>
+      <button class="vis-btn" id="vis-ppt"   onclick="toggleChart('ppt')">  <span class="vis-dot"></span>$/Ton by Vineyard</button>
+      <button class="vis-btn" id="vis-var"   onclick="toggleChart('var')">  <span class="vis-dot"></span>Revenue by Varietal</button>
+      <button class="vis-btn" id="vis-term"  onclick="toggleChart('term')"> <span class="vis-dot"></span>Contract Term</button>
+      <button class="vis-btn" id="vis-cust"  onclick="toggleChart('cust')"> <span class="vis-dot"></span>Revenue by Customer</button>
     </div>
 
-    <button class="reset-btn" id="reset-btn">↺ Reset All Filters</button>
+    <!-- Collapsible: Filters -->
+    <div class="sidebar-section-head collapsible-head" onclick="toggleSection('filters')">
+      <span>Filters</span><span class="collapse-arrow open" id="arrow-filters">▲</span>
+    </div>
+    <div class="collapsible-body" id="section-filters">
+      <button class="reset-btn" id="reset-btn-top" style="margin-bottom:14px;">↺ Reset All Filters</button>
+
+      <div class="fg">
+        <label>Owner</label>
+        <select id="f-owner" multiple><option value="__all__" selected>All Owners</option></select>
+      </div>
+      <div class="fg">
+        <label>Status</label>
+        <select id="f-status" multiple><option value="__all__" selected>All Statuses</option></select>
+      </div>
+      <div class="fg">
+        <label>State</label>
+        <select id="f-state" multiple><option value="__all__" selected>All States</option></select>
+      </div>
+      <div class="fg">
+        <label>County</label>
+        <select id="f-county" multiple><option value="__all__" selected>All Counties</option></select>
+      </div>
+      <div class="fg">
+        <label>AVA</label>
+        <select id="f-ava" multiple><option value="__all__" selected>All AVAs</option></select>
+      </div>
+      <div class="fg">
+        <label>Vineyard</label>
+        <select id="f-vineyard" multiple><option value="__all__" selected>All Vineyards</option></select>
+      </div>
+      <div class="fg">
+        <label>Varietal</label>
+        <select id="f-varietal" multiple><option value="__all__" selected>All Varietals</option></select>
+      </div>
+      <div class="fg">
+        <label>Customer</label>
+        <select id="f-customer" multiple><option value="__all__" selected>All Customers</option></select>
+      </div>
+
+      <button class="reset-btn" id="reset-btn">↺ Reset All Filters</button>
+    </div>
   </aside>
 
   <!-- MAIN -->
@@ -460,15 +516,15 @@ footer {
         <div class="kpi-val" id="k-tons">—</div>
         <div class="kpi-sub" id="k-tons-sub">—</div>
       </div>
-      <div class="kpi k-dust">
-        <div class="kpi-lbl">Total Acres</div>
-        <div class="kpi-val" id="k-acres">—</div>
-        <div class="kpi-sub" id="k-acres-sub">—</div>
-      </div>
       <div class="kpi k-wine2">
         <div class="kpi-lbl">Wtd. Avg Tons/Acre</div>
         <div class="kpi-val" id="k-tpa">—</div>
         <div class="kpi-sub" id="k-tpa-sub">—</div>
+      </div>
+      <div class="kpi k-dust">
+        <div class="kpi-lbl">Total Acres</div>
+        <div class="kpi-val" id="k-acres">—</div>
+        <div class="kpi-sub" id="k-acres-sub">—</div>
       </div>
     </div>
 
@@ -501,8 +557,8 @@ footer {
               <button class="tog"        id="tog-donut-acres" onclick="setToggle('donut','acres')">Acres</button>
             </div>
           </div>
-          <div class="card-body" style="display:flex;align-items:center;justify-content:center;">
-            <div class="chart-std" style="width:100%;"><canvas id="c-status-donut"></canvas></div>
+          <div class="card-body">
+            <div class="chart-std"><canvas id="c-status-donut"></canvas></div>
           </div>
         </div>
       </div>
@@ -1097,6 +1153,16 @@ function toggleChart(id) {
   setTimeout(renderDashboard, 50);
 }
 
+// ── COLLAPSIBLE SECTIONS ──────────────────────────────────
+function toggleSection(id) {
+  const body  = document.getElementById('section-' + id);
+  const arrow = document.getElementById('arrow-' + id);
+  if (!body) return;
+  const isOpen = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isOpen);
+  if (arrow) arrow.classList.toggle('open', !isOpen);
+}
+
 // ── DRAG AND DROP ─────────────────────────────────────────
 let dragSrc = null;
 
@@ -1212,15 +1278,7 @@ function renderDashboard() {
   const avaBase = singleAva ? `by Vineyard (${avasInData[0]})` : 'by AVA';
   document.getElementById('ava-rev-title').textContent =
     (avaMode==='rev' ? 'Revenue ' : 'Tons ') + avaBase;
-  // Match height of the % Sold progress list card
-  const progCard = document.getElementById('card-prog');
-  const avaChartWrap = document.querySelector('.chart-h-ava');
-  if (progCard && avaChartWrap) {
-    const progHeight = progCard.offsetHeight;
-    const headerHeight = document.querySelector('#card-ava-rev .card-head')?.offsetHeight || 42;
-    const targetH = Math.max(180, progHeight - headerHeight - 28);
-    avaChartWrap.style.height = targetH + 'px';
-  }
+
   mkChart('c-ava-rev', {
     type: 'bar',
     data: { labels: groupLabels, datasets: avaDatasets },
@@ -1256,8 +1314,8 @@ function renderDashboard() {
         borderWidth: 3, borderColor: '#fff' }]
     },
     options: {
-      responsive:true, maintainAspectRatio:false, cutout:'45%',
-      layout: { padding: 10 },
+      responsive:true, maintainAspectRatio:false, cutout:'40%',
+      layout: { padding: 4 },
       plugins: {
         legend: { position:'right', labels:{font:{family:FONT,size:9},color:'#1c1712',padding:12,boxWidth:10} },
         tooltip: { callbacks: { label: ctx =>
@@ -1309,14 +1367,7 @@ function renderDashboard() {
     .filter(v => v.val > 0)
     .sort((a,b) => b.val - a.val);
 
-  // Set ppt chart height to match the prog-list card height
-  const pptWrap = document.querySelector('.chart-h-ppt');
-  if (pptWrap && progCard) {
-    const progH = progCard.offsetHeight;
-    const pptHeaderH = document.querySelector('#c-ppt-vineyard')?.closest('.card')
-      ?.querySelector('.card-head')?.offsetHeight || 42;
-    pptWrap.style.height = Math.max(200, progH - pptHeaderH - 28) + 'px';
-  }
+
   mkChart('c-ppt-vineyard', {
     type: 'bar',
     data: {
